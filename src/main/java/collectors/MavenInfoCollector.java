@@ -3,6 +3,7 @@ package collectors;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
@@ -20,19 +21,22 @@ import filemanagement.FileWriter;
 public class MavenInfoCollector implements InformationCollector {
 
 	private MavenProject project;
+	private MavenSession session;
 	private Log log;
 	private FileWriter out;
 
 	public static final String FILE_NAME = "mavenInformation";
 
-	public MavenInfoCollector(MavenProject project, Log log) {
+	public MavenInfoCollector(MavenProject project, MavenSession session, Log log) {
 		this.project = project;
+		this.session = session;
 		this.log = log;
 		this.out = new FileWriter(log);
 	}
 
-	public MavenInfoCollector(MavenProject project, Log log, FileWriter fileWriter) {
+	public MavenInfoCollector(MavenProject project, MavenSession session, Log log, FileWriter fileWriter) {
 		this.project = project;
+		this.session = session;
 		this.log = log;
 		this.out = fileWriter;
 	}
@@ -52,21 +56,31 @@ public class MavenInfoCollector implements InformationCollector {
 			json.put("name", project.getName());
 			json.put("artifactId", project.getArtifactId());
 			json.put("groupId", project.getGroupId());
+			json.put("version", project.getVersion());
+			json.put("tagName", project.getGroupId() + ":" + project.getArtifactId() + ":" + project.getVersion());
 			json.put("dependencies", project.getDependencies());
 			
-			List<String> moduleDependency = new ArrayList<>();
-			for (Dependency dependency : project.getDependencies()) {
-				// TODO check via artifact id against modules
-				if (dependency.getGroupId().equals(project.getGroupId())) {
-					moduleDependency.add(dependency.getGroupId() + ":" + dependency.getArtifactId());
+			//TODO: Decide: up- or downstream
+			List<String> dependsOn = new ArrayList<>();
+			for(MavenProject prj : session.getProjectDependencyGraph().getUpstreamProjects(project, false)) {
+				if (!prj.isExecutionRoot()) {
+					dependsOn.add((prj.getGroupId() + ":" + prj.getArtifactId() + ":" + prj.getVersion()));
 				}
 			}
-			json.put("moduleDependencies", moduleDependency);
+			json.put("dependsOn", dependsOn);
+			
+			List<String> dependedOnBy = new ArrayList<>();
+			for(MavenProject prj : session.getProjectDependencyGraph().getDownstreamProjects(project, false)) {
+				if (!prj.isExecutionRoot()) {
+					dependedOnBy.add(prj.getGroupId() + ":" + prj.getArtifactId() + ":" + prj.getVersion());
+				}
+			}
+			json.put("dependedOnBy", dependedOnBy);
 			
 			out.writeJSONObjectIntoFile(json);
 			out.finishFile();
 		} else {
-			log.error("path that failed: " + dirPath + "\\" + FILE_NAME);
+			log.error("Failed file creation at: " + dirPath + "\\" + FILE_NAME);
 		}
 
 	}

@@ -40,7 +40,7 @@ public class DocumentationMojo extends AbstractMojo {
 
 		/* Collect Info */
 		if(project.getPackaging().equals("jar")) {
-			MavenInfoCollector mavenInfoCollector = new MavenInfoCollector(project, getLog());
+			MavenInfoCollector mavenInfoCollector = new MavenInfoCollector(project, session, getLog());
 			mavenInfoCollector.collectInfo();
 		} else {
 			getLog().info("Skipping data collection: not a jar");
