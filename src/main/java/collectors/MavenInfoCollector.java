@@ -1,5 +1,7 @@
 package collectors;
 
+import java.io.File;
+
 import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
@@ -19,7 +21,7 @@ public class MavenInfoCollector implements InformationCollector {
 	private Log log;
 	private FileWriter out;
 
-	static final String FILE_NAME = "mavenTest.txt";
+	public static final String FILE_NAME = "mavenTest.txt";
 
 	public MavenInfoCollector(MavenProject project, Log log) {
 		this.project = project;
@@ -38,9 +40,11 @@ public class MavenInfoCollector implements InformationCollector {
 	 * stores them into a file in the target directory
 	 */
 	public void collectInfo() {
+		log.info("--COLLECTING MAVEN INFO--");
 		log.info("ExecProject: " + project.getExecutionProject().getArtifactId());
 
-		if (out.createFile(project.getBasedir() + "\\target\\" + FILE_NAME)) {
+		String dirPath = project.getBasedir() + "\\target\\" + FOLDER_NAME;
+		if (out.createFile(dirPath, FILE_NAME)) {
 			out.writeIntoFile("Dependencies to other modules: \n");
 
 			for (Dependency dependency : project.getDependencies()) {
@@ -51,7 +55,7 @@ public class MavenInfoCollector implements InformationCollector {
 			}
 			out.finishFile();
 		} else {
-			log.error("meh");
+			log.error("path that failed: " + dirPath + "\\" + FILE_NAME);
 		}
 
 	}

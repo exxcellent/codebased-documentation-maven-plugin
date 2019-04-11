@@ -27,21 +27,23 @@ public class FileWriter {
 	}
 
 	/**
-	 * Tries to create the file at the given path and an OutputStreamWriter to it.
+	 * Tries to create the file with the given file name at the given path and an OutputStreamWriter to it.
 	 * 
 	 * @param path Path to the file.
+	 * @param fileName name of the file to be created (WITH type)
 	 * @return true, if there was no error and the file was created.
 	 */
-	public boolean createFile(String path) {
+	public boolean createFile(String path, String fileName) {
 		try {
 			FileOutputStream stream;
-			log.info("creating file");
-			File logFile;
-			logFile = new File(path);
+			
+			File dir = new File(path);
+			dir.mkdirs();
+			
+			File logFile = new File(path + "\\" + fileName);
 
 			filePath = logFile.getAbsolutePath();
 			if (logFile.createNewFile()) {
-				log.info("created file");
 				stream = new FileOutputStream(logFile);
 				out = new OutputStreamWriter(stream, Charset.defaultCharset()); // TODO: set charset
 			} else {
