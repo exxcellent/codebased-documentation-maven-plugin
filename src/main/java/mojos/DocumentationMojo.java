@@ -50,7 +50,7 @@ public class DocumentationMojo extends AbstractMojo {
 		List<MavenProject> sortedProjects = session.getProjectDependencyGraph().getSortedProjects();
 		if (sortedProjects.get(sortedProjects.size() - 1).equals(project)) {
 			setDocumentLocation();
-			FileAggregator aggregator = new FileAggregator(project, getLog());
+			FileAggregator aggregator = new FileAggregator(session, getLog());
 			aggregator.aggregateFilesTo(documentLocation, "ALL");
 		}
 
@@ -86,6 +86,9 @@ public class DocumentationMojo extends AbstractMojo {
 			documentLocation = new File(session.getExecutionRootDirectory() + "\\documentation");
 			if (!documentLocation.mkdirs() && !documentLocation.exists()) {
 				documentLocation = new File(session.getExecutionRootDirectory());
+			}
+			if(project.isExecutionRoot()) {
+				getLog().info("documentLocation in execution pom undefined");
 			}
 			getLog().info("Documentation location was set to default: " + documentLocation.getAbsolutePath());
 		}

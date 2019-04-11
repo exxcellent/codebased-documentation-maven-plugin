@@ -46,7 +46,7 @@ public class MavenInfoCollector implements InformationCollector {
 	 * stores them into a file in the target directory
 	 */
 	public void collectInfo() {
-		log.info("--COLLECTING MAVEN INFO--");
+		log.info("-- COLLECTING MAVEN INFO --");
 		log.info("ExecProject: " + project.getExecutionProject().getArtifactId());
 
 		String dirPath = project.getBasedir() + "\\target\\" + FOLDER_NAME;
@@ -63,7 +63,7 @@ public class MavenInfoCollector implements InformationCollector {
 			//TODO: Decide: up- or downstream
 			List<String> dependsOn = new ArrayList<>();
 			for(MavenProject prj : session.getProjectDependencyGraph().getUpstreamProjects(project, false)) {
-				if (!prj.isExecutionRoot()) {
+				if (!prj.isExecutionRoot() && !prj.getPackaging().equalsIgnoreCase("pom")) {
 					dependsOn.add((prj.getGroupId() + ":" + prj.getArtifactId() + ":" + prj.getVersion()));
 				}
 			}
@@ -71,7 +71,7 @@ public class MavenInfoCollector implements InformationCollector {
 			
 			List<String> dependedOnBy = new ArrayList<>();
 			for(MavenProject prj : session.getProjectDependencyGraph().getDownstreamProjects(project, false)) {
-				if (!prj.isExecutionRoot()) {
+				if (!prj.isExecutionRoot() && !prj.getPackaging().equalsIgnoreCase("pom")) {
 					dependedOnBy.add(prj.getGroupId() + ":" + prj.getArtifactId() + ":" + prj.getVersion());
 				}
 			}
