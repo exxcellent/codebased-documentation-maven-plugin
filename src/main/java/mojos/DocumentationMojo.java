@@ -13,7 +13,7 @@ import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import collectors.MavenInfoCollector;
-import creators.FileAggregator;
+import filemanagement.FileAggregator;
 
 /**
  * Mojo for creating the documentation of the project in which it is running.
@@ -51,7 +51,7 @@ public class DocumentationMojo extends AbstractMojo {
 		if (sortedProjects.get(sortedProjects.size() - 1).equals(project)) {
 			setDocumentLocation();
 			FileAggregator aggregator = new FileAggregator(project, getLog());
-			aggregator.aggregateFilesTo(documentLocation, "ALL.txt");
+			aggregator.aggregateFilesTo(documentLocation, "ALL");
 		}
 
 	}
@@ -84,7 +84,7 @@ public class DocumentationMojo extends AbstractMojo {
 		 */
 		if (documentLocation == null) {
 			documentLocation = new File(session.getExecutionRootDirectory() + "\\documentation");
-			if (!documentLocation.mkdirs()) {
+			if (!documentLocation.mkdirs() && !documentLocation.exists()) {
 				documentLocation = new File(session.getExecutionRootDirectory());
 			}
 			getLog().info("Documentation location was set to default: " + documentLocation.getAbsolutePath());

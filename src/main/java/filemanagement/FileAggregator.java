@@ -1,4 +1,4 @@
-package creators;
+package filemanagement;
 
 import java.io.File;
 
@@ -19,12 +19,12 @@ public class FileAggregator {
 
 	public void aggregateFilesTo(File folderPath, String fileNameSuffix) {
 
-		log.info("WILL DO SOMETHING, SOON");
+		log.info("--AGGREGATING FILES--");
 
 		FileWriter out = new FileWriter(log);
-		log.info(folderPath + "\\" + MavenInfoCollector.FILE_NAME.substring(0, MavenInfoCollector.FILE_NAME.length() - 4) + fileNameSuffix);
-		if (out.createFile(folderPath.getAbsolutePath(), MavenInfoCollector.FILE_NAME.substring(0, MavenInfoCollector.FILE_NAME.length() - 4) + fileNameSuffix)) {
-			out.writeIntoFile("tada");
+		log.info(folderPath + "\\" + MavenInfoCollector.FILE_NAME + fileNameSuffix);
+		if (out.createFile(folderPath.getAbsolutePath(), MavenInfoCollector.FILE_NAME + fileNameSuffix)) {
+			out.writeTextIntoFile("mmm");
 			out.finishFile();
 		} else {
 			log.error("File already exists. Please delete the old file first"); //TODO: better handling
