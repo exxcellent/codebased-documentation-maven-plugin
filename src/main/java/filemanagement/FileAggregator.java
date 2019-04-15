@@ -2,23 +2,29 @@ package filemanagement;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
-import org.json.JSONException;
-import org.json.JSONObject;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonSyntaxException;
+import com.google.gson.stream.JsonReader;
 
 import collectors.MavenInfoCollector;
+import collectors.models.CollectedMavenInfoModel;
+import collectors.models.InfoObject;
+import collectors.models.MavenInfoObject;
 
 /**
  * Class for gathering and combining information files.
+ * 
  * @author gmittmann
  *
  */
@@ -36,32 +42,32 @@ public class FileAggregator {
 	 * Collects all information files of the projects and combines them to topic
 	 * related files and one joined file with all information.
 	 * 
-	 * @param folderPath path to the folder, into which the new files shall be saved
+	 * @param folderPath     path to the folder, into which the new files shall be
+	 *                       saved
 	 * @param fileNameSuffix suffix to be appended to the file name of the topics
 	 */
 	public void aggregateFilesTo(File folderPath, String fileNameSuffix) {
 
 		log.info("-- AGGREGATING FILES --");
+		FileWriter writer = new FileWriter(log);
 
-		FileWriter out = new FileWriter(log);
+		List<File> mavenInfoFiles = findFiles(MavenInfoCollector.FOLDER_NAME, MavenInfoCollector.FILE_NAME);
+		List<MavenInfoObject> mavenJsonObjects = createJSONObjects(mavenInfoFiles, MavenInfoObject.class);
+		// TODO process JSONObjects
 
-		String mavenInfoPath = folderPath + "\\" + MavenInfoCollector.FILE_NAME + fileNameSuffix + ".json";
-		log.info("MavenInfo in: " + mavenInfoPath);
-		if (out.createFile(folderPath.getAbsolutePath(), MavenInfoCollector.FILE_NAME + fileNameSuffix)) {
-
-			List<File> mavenInfoFiles = findFiles(MavenInfoCollector.FOLDER_NAME, MavenInfoCollector.FILE_NAME);
-			List<JSONObject> jsonObjects = createJSONObjects(mavenInfoFiles);
-			//TODO process JSONObjects
-
-			out.finishFile();
-		} else {
-			log.error("There was an error creating the file: " + mavenInfoPath); // TODO: better handling
-			out.finishFile();
+		List<String> moduleDependencies = new ArrayList<>();
+		for (MavenInfoObject currentObject : mavenJsonObjects) {
+			for (int i = 0; i < currentObject.getDependsOn().size(); i++) {
+				moduleDependencies.add(currentObject.getTag() + " ---> " + currentObject.getDependsOn().get(i));
+			}
 		}
 
 		// TODO: join information in one file
-		
-		
+		CollectedMavenInfoModel mavenCollection = new CollectedMavenInfoModel("test"); // TODO: find name
+		mavenCollection.setModules(mavenJsonObjects);
+		mavenCollection.setDependencyGraphEdges(moduleDependencies);
+		writer.writeInfoToJSONFile(folderPath.getAbsolutePath(), MavenInfoCollector.FILE_NAME + fileNameSuffix,
+				mavenCollection);
 
 	}
 
@@ -80,8 +86,10 @@ public class FileAggregator {
 
 		for (MavenProject currentProject : session.getProjects()) {
 			if (!currentProject.getPackaging().equalsIgnoreCase("pom")) {
-				File infoFile = new File(
-						currentProject.getBasedir() + "\\target\\" + folderName + "\\" + fileName + ".json");
+
+				File infoFile = Paths
+						.get(currentProject.getBasedir().getAbsolutePath(), "target", folderName, fileName + ".json")
+						.toFile();
 
 				if (infoFile.exists() && infoFile.canRead()) {
 					log.info("found file for: " + currentProject.getArtifactId());
@@ -95,30 +103,30 @@ public class FileAggregator {
 		}
 		return files;
 	}
-	
+
 	/**
-	 * Creates JSONObjects (if possible) based on the files in the given list.
-	 * @param files list of files, that are to be turned into JSONObjects.
-	 * @return list with the created JSONObjects.
+	 * Creates InfoObjects (if possible) based on the files in the given list.
+	 * 
+	 * @param files list of files, that are to be turned into InfoObjects.
+	 * @return list with the created InfoObjects.
 	 */
-	private List<JSONObject> createJSONObjects(List<File> files) {
-		List<JSONObject> objects = new ArrayList<>();
-		
+	private <T extends InfoObject> List<T> createJSONObjects(List<File> files, Class<T> clazz) {
+		List<T> objects = new ArrayList<>();
+		Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
+
 		for (File file : files) {
-			try {
-				InputStream in = new FileInputStream(file);
-				String content = IOUtils.toString(in, "UTF-8");
-				objects.add(new JSONObject(content));
-			} catch (FileNotFoundException e) {
-				log.error("FnF - Could not read file: " + file.getAbsolutePath());
+			try (JsonReader reader = new JsonReader(new InputStreamReader(new FileInputStream(file), "UTF-16"))) {
+				objects.add(gson.fromJson(reader, clazz));
 			} catch (IOException e) {
-				log.error("IO - Could not read file: " + file.getAbsolutePath());
-			} catch (JSONException e) {
-				log.error("JSON - file is not correct: " + file.getAbsolutePath());
+				log.error("Could not access file: " + file.getAbsolutePath());
+				log.error(e.getMessage());
+			} catch (IllegalStateException | JsonSyntaxException e) {
+				log.error("Error reading JSON from file: " + file.getAbsolutePath());
+				log.error(e.getMessage());
 			}
 		}
-		
+
 		return objects;
 	}
-
+	
 }

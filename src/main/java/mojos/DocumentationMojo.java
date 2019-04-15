@@ -1,6 +1,7 @@
 package mojos;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.List;
 
 import org.apache.maven.execution.MavenSession;
@@ -71,7 +72,7 @@ public class DocumentationMojo extends AbstractMojo {
 					String pathInAggregatorPom = extractDocumentLocationFromConfigurationDOM(
 							prj.getPlugin("codebased-documentation:cd-maven-plugin").getConfiguration());
 					if (pathInAggregatorPom != null && !pathInAggregatorPom.isEmpty()) {
-						documentLocation = new File(pathInAggregatorPom);
+						documentLocation = Paths.get(pathInAggregatorPom).toFile();
 						getLog().info("Documentation location set to: " + documentLocation.getAbsolutePath());
 					}
 				}
@@ -83,9 +84,9 @@ public class DocumentationMojo extends AbstractMojo {
 		 * Set default value
 		 */
 		if (documentLocation == null) {
-			documentLocation = new File(session.getExecutionRootDirectory() + "\\documentation");
+			documentLocation = Paths.get(session.getExecutionRootDirectory(), "documentation").toFile();
 			if (!documentLocation.mkdirs() && !documentLocation.exists()) {
-				documentLocation = new File(session.getExecutionRootDirectory());
+				documentLocation = Paths.get(session.getExecutionRootDirectory()).toFile();
 			}
 			if(project.isExecutionRoot()) {
 				getLog().info("documentLocation in execution pom undefined");
