@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.maven.model.Dependency;
+import org.apache.maven.project.MavenProject;
 
 public class MavenInfoObject extends InfoObject{
 	
@@ -24,16 +25,15 @@ public class MavenInfoObject extends InfoObject{
 		this.dependencies = dependencies;
 		this.dependsOn = dependsOn;
 	}
-	
-	public MavenInfoObject(String name, String artifactID, String groupId) {
-		super(name);
-		this.artifactID = artifactID;
-		this.groupID = groupId;
-	}
-	
-	public MavenInfoObject(String name, String artifactId) {
-		super(name);
-		this.artifactID = artifactId;
+
+	public MavenInfoObject(MavenProject project, List<DependencyInfoObject> dependencies, List<String> dependsOn) {
+		super(project.getName());
+		this.artifactID = project.getArtifactId();
+		this.groupID = project.getGroupId();
+		this.version = project.getVersion();
+		this.tag = this.groupID + ":" + this.artifactID + ":" + this.version;
+		this.dependencies = dependencies;
+		this.dependsOn = dependsOn;
 	}
 	
 	public String getArtifactID() {

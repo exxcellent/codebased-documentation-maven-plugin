@@ -6,6 +6,7 @@ import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.apache.maven.plugin.logging.Log;
 
@@ -23,6 +24,8 @@ import collectors.models.InfoObject;
  */
 public class FileWriter {
 
+	public static final String CHARSET = "UTF-16";
+	
 	private final Log log;
 
 	public FileWriter(Log log) {
@@ -85,6 +88,42 @@ public class FileWriter {
 		log.error("Could not write, as file couldn't be created");
 		return false;
 	}
+	
+	public void writeTestJSON(String path, String fileName, Object obj) {
+		OutputStreamWriter out = createFile(path, fileName);
+
+		if (out != null) {
+			Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
+			try {
+				gson.toJson(obj, out);
+				out.flush();
+				out.close();
+			} catch (JsonIOException e) {
+				log.error("Could not create JSON from object");
+				log.error(e.getMessage());
+			} catch (IOException e) {
+				log.error("IOException: " + e.getMessage());
+			}
+		}
+	}
+	
+	public void writeTestJSON(String path, String fileName, List<String> list) {
+		OutputStreamWriter out = createFile(path, fileName);
+
+		if (out != null) {
+			Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
+			try {
+				gson.toJson(list, out);
+				out.flush();
+				out.close();
+			} catch (JsonIOException e) {
+				log.error("Could not create JSON from object");
+				log.error(e.getMessage());
+			} catch (IOException e) {
+				log.error("IOException: " + e.getMessage());
+			}
+		}
+	}
 
 	/**
 	 * Tries to create the file with the given file name at the given path and an
@@ -106,7 +145,7 @@ public class FileWriter {
 				Files.createFile(logFile);
 			}
 			FileOutputStream stream = new FileOutputStream(logFile.toFile(), false);
-			OutputStreamWriter out = new OutputStreamWriter(stream, "UTF-16"); // TODO: set charset
+			OutputStreamWriter out = new OutputStreamWriter(stream, CHARSET); // TODO: set charset
 			return out;
 
 		} catch (NullPointerException e) {

@@ -1,6 +1,8 @@
 package mojos;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
@@ -40,11 +42,11 @@ public class DocumentationMojo extends AbstractMojo {
 		getLog().info(project.isExecutionRoot() ? "ROOT" : "NOT A ROOT");
 
 		/* Collect Info */
-		if(project.getPackaging().equals("jar")) {
+		if (!project.getPackaging().equals("pom")) {
 			MavenInfoCollector mavenInfoCollector = new MavenInfoCollector(project, session, getLog());
 			mavenInfoCollector.collectInfo();
 		} else {
-			getLog().info("Skipping data collection: not a jar");
+			getLog().info("Skipping data collection: pom");
 		}
 
 		/* If this is the last project/module start file aggregation */
@@ -66,16 +68,13 @@ public class DocumentationMojo extends AbstractMojo {
 	 */
 	private void setDocumentLocation() {
 		if (!project.isExecutionRoot()) {
-			/* check value in root/ aggregator pom */
-			for (MavenProject prj : session.getProjects()) {
-				if (prj.isExecutionRoot()) {
-					String pathInAggregatorPom = extractDocumentLocationFromConfigurationDOM(
-							prj.getPlugin("codebased-documentation:cd-maven-plugin").getConfiguration());
-					if (pathInAggregatorPom != null && !pathInAggregatorPom.isEmpty()) {
-						documentLocation = Paths.get(pathInAggregatorPom).toFile();
-						getLog().info("Documentation location set to: " + documentLocation.getAbsolutePath());
-					}
-				}
+			/* check value in aggregator pom and overwrite, if there is a value */
+			MavenProject root = session.getTopLevelProject();
+			String pathInAggregatorPom = extractDocumentLocationFromConfigurationDOM(
+					root.getPlugin("codebased-documentation:cd-maven-plugin").getConfiguration());
+			if (pathInAggregatorPom != null && !pathInAggregatorPom.isEmpty()) {
+				documentLocation = Paths.get(pathInAggregatorPom).toFile();
+				getLog().info("Documentation location set to: " + documentLocation.getAbsolutePath());
 			}
 		}
 
@@ -85,10 +84,17 @@ public class DocumentationMojo extends AbstractMojo {
 		 */
 		if (documentLocation == null) {
 			documentLocation = Paths.get(session.getExecutionRootDirectory(), "documentation").toFile();
-			if (!documentLocation.mkdirs() && !documentLocation.exists()) {
+			try {
+				Files.createDirectories(documentLocation.toPath());
+			} catch (IOException e) {
+				getLog().error(e.getMessage());
+				getLog().error("documentation folder could not be created. Document location set to root directory.");
 				documentLocation = Paths.get(session.getExecutionRootDirectory()).toFile();
 			}
-			if(project.isExecutionRoot()) {
+			if (!documentLocation.exists()) {
+				documentLocation = Paths.get(session.getExecutionRootDirectory()).toFile();
+			}
+			if (project.isExecutionRoot()) {
 				getLog().info("documentLocation in execution pom undefined");
 			}
 			getLog().info("Documentation location was set to default: " + documentLocation.getAbsolutePath());

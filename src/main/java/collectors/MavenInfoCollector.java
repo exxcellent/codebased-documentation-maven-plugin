@@ -53,26 +53,19 @@ public class MavenInfoCollector implements InformationCollector {
 
 		String dirPath = Paths.get(project.getBasedir().getAbsolutePath(), "target", FOLDER_NAME).toString();
 
-		/*Get all projects the current project directly depends on. Projects with packaging pom are irrelevant*/
+		/*Get all projects the current project directly depends on. TODO: CHeck whether projects with packaging pom are irrelevant (?)*/
 		List<String> dependsOn = new ArrayList<>();
 		for (MavenProject prj : session.getProjectDependencyGraph().getUpstreamProjects(project, false)) {
-			if (!prj.isExecutionRoot() && !prj.getPackaging().equalsIgnoreCase("pom")) {
-				dependsOn.add((prj.getGroupId() + ":" + prj.getArtifactId() + ":" + prj.getVersion()));
-			}
+			dependsOn.add((prj.getGroupId() + ":" + prj.getArtifactId() + ":" + prj.getVersion()));
 		}
-
-		/*Create tag*/
-		String tag = project.getGroupId() + ":" + project.getArtifactId() + ":" + project.getVersion();
 		
 		/*Create DependencyInfoObjects for the non test dependencies of the current project*/
 		List<DependencyInfoObject> dependencies = turnToDependencyInfoObject(
 				listNonTestDependencies(project.getDependencies()));
 		
-		MavenInfoObject info = new MavenInfoObject(project.getName(), project.getArtifactId(), project.getGroupId(),
-				project.getVersion(), tag, dependencies, dependsOn);
+		MavenInfoObject info = new MavenInfoObject(project, dependencies, dependsOn);
 		
 		out.writeInfoToJSONFile(dirPath, FILE_NAME, info);
-		log.info("- finished maven info collection -");
 
 	}
 

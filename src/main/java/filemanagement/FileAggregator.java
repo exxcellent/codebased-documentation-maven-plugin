@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.logging.Log;
@@ -18,7 +20,7 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
 import collectors.MavenInfoCollector;
-import collectors.models.CollectedMavenInfoModel;
+import collectors.models.CollectedMavenInfoObject;
 import collectors.models.InfoObject;
 import collectors.models.MavenInfoObject;
 
@@ -50,24 +52,36 @@ public class FileAggregator {
 
 		log.info("-- AGGREGATING FILES --");
 		FileWriter writer = new FileWriter(log);
+		String projectName = findProjectName();
 
+		log.info("  - MAVEN FILES - ");
 		List<File> mavenInfoFiles = findFiles(MavenInfoCollector.FOLDER_NAME, MavenInfoCollector.FILE_NAME);
 		List<MavenInfoObject> mavenJsonObjects = createJSONObjects(mavenInfoFiles, MavenInfoObject.class);
-		// TODO process JSONObjects
+		// TODO process InfoObjects
 
-		List<String> moduleDependencies = new ArrayList<>();
+		Map<String, List<String>> moduleDependencies = new HashMap<>();
 		for (MavenInfoObject currentObject : mavenJsonObjects) {
-			for (int i = 0; i < currentObject.getDependsOn().size(); i++) {
-				moduleDependencies.add(currentObject.getTag() + " ---> " + currentObject.getDependsOn().get(i));
-			}
+			moduleDependencies.put(currentObject.getTag(), currentObject.getDependsOn());
 		}
 
-		// TODO: join information in one file
-		CollectedMavenInfoModel mavenCollection = new CollectedMavenInfoModel("test"); // TODO: find name
+		/* join information in one file */
+		CollectedMavenInfoObject mavenCollection = new CollectedMavenInfoObject(projectName);
 		mavenCollection.setModules(mavenJsonObjects);
-		mavenCollection.setDependencyGraphEdges(moduleDependencies);
+		mavenCollection.setModuleDependencies(moduleDependencies);
 		writer.writeInfoToJSONFile(folderPath.getAbsolutePath(), MavenInfoCollector.FILE_NAME + fileNameSuffix,
 				mavenCollection);
+		
+	}
+
+	/**
+	 * Searches for the name of the project defined in the top level project. If
+	 * there is no name defined, use groupId and artifactId concatenated.
+	 * 
+	 * @return Name of the project
+	 */
+	private String findProjectName() {
+		MavenProject root = session.getTopLevelProject();
+		return root.getName().isEmpty() ? (root.getGroupId() + ":" + root.getArtifactId()) : root.getName();
 
 	}
 
@@ -115,7 +129,8 @@ public class FileAggregator {
 		Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
 
 		for (File file : files) {
-			try (JsonReader reader = new JsonReader(new InputStreamReader(new FileInputStream(file), "UTF-16"))) {
+			try (JsonReader reader = new JsonReader(
+					new InputStreamReader(new FileInputStream(file), FileWriter.CHARSET))) {
 				objects.add(gson.fromJson(reader, clazz));
 			} catch (IOException e) {
 				log.error("Could not access file: " + file.getAbsolutePath());
@@ -128,5 +143,5 @@ public class FileAggregator {
 
 		return objects;
 	}
-	
+
 }
