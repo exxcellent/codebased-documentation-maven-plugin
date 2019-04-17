@@ -6,7 +6,6 @@ import java.io.OutputStreamWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.List;
 
 import org.apache.maven.plugin.logging.Log;
 
@@ -22,14 +21,12 @@ import collectors.models.InfoObject;
  * @author gmittmann
  *
  */
-public class FileWriter {
+public final class FileWriter {
 
 	public static final String CHARSET = "UTF-16";
-	
-	private final Log log;
 
-	public FileWriter(Log log) {
-		this.log = log;
+	private FileWriter() {
+
 	}
 
 	/**
@@ -42,87 +39,44 @@ public class FileWriter {
 	 * @return true, if the text was written. False if there was an error or there
 	 *         was no file created //TODO: errorhandling
 	 */
-	public boolean writeTextIntoFile(String filePath, String fileName, String text) {
-		OutputStreamWriter out = createFile(filePath, fileName);
-		if (out != null) {
-			try {
-				out.append(text);
-				out.flush();
-				out.close();
-				return true;
-			} catch (IOException e) {
-				log.error("Could not write into file: " + filePath);
-				log.error(e.getMessage());
-			}
+	public static boolean writeTextIntoFile(String filePath, String fileName, String text, Log log) {
+
+		try (OutputStreamWriter out = createFile(filePath, fileName, log)) {
+			out.append(text);
+			out.flush();
+			return true;
+		} catch (IOException e) {
+			log.error("Could not write into file: " + filePath);
+			log.error(e.getMessage());
 		}
+
 		return false;
 	}
 
 	/**
 	 * Takes the given InfoObject and serializes it to JSON into the given file.
 	 * 
-	 * @param <T> Type of InfoObject
-	 * @param path path to the target directory
+	 * @param <T>      Type of InfoObject
+	 * @param path     path to the target directory
 	 * @param fileName name of the file
-	 * @param info InfoObject which contains the information to be written into the file
+	 * @param info     InfoObject which contains the information to be written into
+	 *                 the file
 	 * @return true, if the file was created and written successfully.
 	 */
-	public <T extends InfoObject> boolean writeInfoToJSONFile(String path, String fileName, T info) {
+	public static <T extends InfoObject> boolean writeInfoToJSONFile(String path, String fileName, T info, Log log) {
 
-		OutputStreamWriter out = createFile(path, fileName);
-
-		if (out != null) {
-			Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
-			try {
-				gson.toJson(info, out);
-				out.flush();
-				out.close();
-			} catch (JsonIOException e) {
-				log.error("Could not create JSON from object");
-				log.error(e.getMessage());
-			} catch (IOException e) {
-				log.error("IOException: " + e.getMessage());
-			}
+		Gson gson = createGson();
+		try (OutputStreamWriter out = createFile(path, fileName, log)) {
+			gson.toJson(info, out);
+			out.flush();
 			return true;
+		} catch (JsonIOException e) {
+			log.error("Could not create JSON from object");
+			log.error(e.getMessage());
+		} catch (IOException e) {
+			log.error("IOException: " + e.getMessage());
 		}
-		log.error("Could not write, as file couldn't be created");
 		return false;
-	}
-	
-	public void writeTestJSON(String path, String fileName, Object obj) {
-		OutputStreamWriter out = createFile(path, fileName);
-
-		if (out != null) {
-			Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
-			try {
-				gson.toJson(obj, out);
-				out.flush();
-				out.close();
-			} catch (JsonIOException e) {
-				log.error("Could not create JSON from object");
-				log.error(e.getMessage());
-			} catch (IOException e) {
-				log.error("IOException: " + e.getMessage());
-			}
-		}
-	}
-	
-	public void writeTestJSON(String path, String fileName, List<String> list) {
-		OutputStreamWriter out = createFile(path, fileName);
-
-		if (out != null) {
-			Gson gson = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
-			try {
-				gson.toJson(list, out);
-				out.flush();
-				out.close();
-			} catch (JsonIOException e) {
-				log.error("Could not create JSON from object");
-				log.error(e.getMessage());
-			} catch (IOException e) {
-				log.error("IOException: " + e.getMessage());
-			}
-		}
 	}
 
 	/**
@@ -134,10 +88,10 @@ public class FileWriter {
 	 * @return outputStreamWriter Writer to the created file. null if there was an
 	 *         error.
 	 */
-	private OutputStreamWriter createFile(String path, String fileName) {
+	private static OutputStreamWriter createFile(String path, String fileName, Log log) {
 
 		try {
-			createDir(path);
+			createDir(path, log);
 
 			Path logFile = Paths.get(path, fileName + ".json");
 
@@ -164,7 +118,7 @@ public class FileWriter {
 	 * @return Path Path object to the created directory.
 	 * @throws NullPointerException if path is null
 	 */
-	private Path createDir(String path) throws NullPointerException {
+	private static Path createDir(String path, Log log) throws NullPointerException {
 		if (path != null) {
 			try {
 				return Files.createDirectories(Paths.get(path));
@@ -176,6 +130,10 @@ public class FileWriter {
 			throw new NullPointerException("Path to directory is null!");
 		}
 		return null;
+	}
+	
+	private static Gson createGson() {
+		return new GsonBuilder().setPrettyPrinting().serializeNulls().create();
 	}
 
 }

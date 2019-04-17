@@ -25,7 +25,6 @@ public class MavenInfoCollector implements InformationCollector {
 	private MavenProject project;
 	private MavenSession session;
 	private Log log;
-	private FileWriter out;
 
 	public static final String FILE_NAME = "mavenInformation";
 
@@ -33,14 +32,6 @@ public class MavenInfoCollector implements InformationCollector {
 		this.project = project;
 		this.session = session;
 		this.log = log;
-		this.out = new FileWriter(log);
-	}
-
-	public MavenInfoCollector(MavenProject project, MavenSession session, Log log, FileWriter fileWriter) {
-		this.project = project;
-		this.session = session;
-		this.log = log;
-		this.out = fileWriter;
 	}
 
 	/**
@@ -48,15 +39,18 @@ public class MavenInfoCollector implements InformationCollector {
 	 * stores them into a file in the target directory
 	 */
 	public void collectInfo() {
-		log.info("-- COLLECTING MAVEN INFO --");
-		log.info("ExecProject: " + project.getExecutionProject().getArtifactId());
+		log.info("  -- COLLECTING MAVEN INFO --");
 
 		String dirPath = Paths.get(project.getBasedir().getAbsolutePath(), "target", FOLDER_NAME).toString();
+		log.info("target folder: " + dirPath);
+		log.info("target file: " + FILE_NAME);
 
-		/*Get all projects the current project directly depends on. TODO: CHeck whether projects with packaging pom are irrelevant (?)*/
+		/*Get all projects the current project directly depends on. Projects with packaging type pom are irrelevant*/
 		List<String> dependsOn = new ArrayList<>();
 		for (MavenProject prj : session.getProjectDependencyGraph().getUpstreamProjects(project, false)) {
-			dependsOn.add((prj.getGroupId() + ":" + prj.getArtifactId() + ":" + prj.getVersion()));
+			if (!prj.getPackaging().equalsIgnoreCase("pom")) {
+				dependsOn.add((prj.getGroupId() + ":" + prj.getArtifactId() + ":" + prj.getVersion()));
+			}
 		}
 		
 		/*Create DependencyInfoObjects for the non test dependencies of the current project*/
@@ -65,7 +59,7 @@ public class MavenInfoCollector implements InformationCollector {
 		
 		MavenInfoObject info = new MavenInfoObject(project, dependencies, dependsOn);
 		
-		out.writeInfoToJSONFile(dirPath, FILE_NAME, info);
+		FileWriter.writeInfoToJSONFile(dirPath, FILE_NAME, info, log);
 
 	}
 

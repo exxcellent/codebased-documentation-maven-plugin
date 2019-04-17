@@ -3,6 +3,7 @@ package mojos;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
 import java.util.List;
 
@@ -39,8 +40,6 @@ public class DocumentationMojo extends AbstractMojo {
 
 	public void execute() throws MojoExecutionException, MojoFailureException {
 
-		getLog().info(project.isExecutionRoot() ? "ROOT" : "NOT A ROOT");
-
 		/* Collect Info */
 		if (!project.getPackaging().equals("pom")) {
 			MavenInfoCollector mavenInfoCollector = new MavenInfoCollector(project, session, getLog());
@@ -52,6 +51,7 @@ public class DocumentationMojo extends AbstractMojo {
 		/* If this is the last project/module start file aggregation */
 		List<MavenProject> sortedProjects = session.getProjectDependencyGraph().getSortedProjects();
 		if (sortedProjects.get(sortedProjects.size() - 1).equals(project)) {
+			getLog().info("  -- AGGREGATING FILES --");
 			setDocumentLocation();
 			FileAggregator aggregator = new FileAggregator(session, getLog());
 			aggregator.aggregateFilesTo(documentLocation, "ALL");
@@ -62,44 +62,74 @@ public class DocumentationMojo extends AbstractMojo {
 	/**
 	 * Sets the location to which the aggregated file will be written to. If the
 	 * current project is not the executionRoot, the parameter is searched in the
-	 * aggregator pom. If there is no value there, the default value of the root
-	 * directory is set. If the current project is the executionRoot, the defined
-	 * value is used, if available, else the default value is applied.
+	 * pom of the execution project. If the current project is the executionRoot,
+	 * the defined value is used, if available, else the default value is applied.
 	 */
 	private void setDocumentLocation() {
 		if (!project.isExecutionRoot()) {
-			/* check value in aggregator pom and overwrite, if there is a value */
-			MavenProject root = session.getTopLevelProject();
-			String pathInAggregatorPom = extractDocumentLocationFromConfigurationDOM(
-					root.getPlugin("codebased-documentation:cd-maven-plugin").getConfiguration());
-			if (pathInAggregatorPom != null && !pathInAggregatorPom.isEmpty()) {
-				documentLocation = Paths.get(pathInAggregatorPom).toFile();
-				getLog().info("Documentation location set to: " + documentLocation.getAbsolutePath());
-			}
+			setDocumentLocationByExecutionRoot();
 		}
-
 		/*
-		 * If the documentLocation is still null, it was not set in the aggregator pom.
+		 * If the documentLocation is still null, it was not set in the execution pom.
 		 * Set default value
 		 */
 		if (documentLocation == null) {
-			documentLocation = Paths.get(session.getExecutionRootDirectory(), "documentation").toFile();
-			try {
-				Files.createDirectories(documentLocation.toPath());
-			} catch (IOException e) {
-				getLog().error(e.getMessage());
-				getLog().error("documentation folder could not be created. Document location set to root directory.");
-				documentLocation = Paths.get(session.getExecutionRootDirectory()).toFile();
-			}
-			if (!documentLocation.exists()) {
-				documentLocation = Paths.get(session.getExecutionRootDirectory()).toFile();
-			}
-			if (project.isExecutionRoot()) {
-				getLog().info("documentLocation in execution pom undefined");
-			}
-			getLog().info("Documentation location was set to default: " + documentLocation.getAbsolutePath());
+			setDocumentLocationToDefault();
 		}
 
+	}
+
+	/**
+	 * Sets the documentLocation to the value defined in th eexecution root project.
+	 * If there is no value set there or the value is not a valid path, the document
+	 * location is set to null.
+	 */
+	private void setDocumentLocationByExecutionRoot() {
+		/* check value in aggregator pom and overwrite, if there is a value */
+		MavenProject root = session.getTopLevelProject();
+		for (MavenProject prj : session.getAllProjects()) {
+			if (project.isExecutionRoot()) {
+				root = prj;
+			}
+		}
+		String pathInAggregatorPom = extractDocumentLocationFromConfigurationDOM(
+				root.getPlugin("codebased-documentation:cd-maven-plugin").getConfiguration());
+
+		if (pathInAggregatorPom != null && !pathInAggregatorPom.isEmpty()) {
+			try {
+				documentLocation = Paths.get(pathInAggregatorPom).toFile();
+				getLog().info("Documentation location set to: " + documentLocation.getAbsolutePath());
+			} catch (InvalidPathException e) {
+				getLog().error("documentLocation defined in the top level project can't be converted to a path.");
+				documentLocation = null;
+			}
+		} else {
+			documentLocation = null;
+		}
+	}
+
+	/**
+	 * Sets the documentLocation to the default value of
+	 * executionRootDirectory/documentation and tries to create the needed
+	 * directories for this. If this fails, the document location is set to the
+	 * execution root directory.
+	 */
+	private void setDocumentLocationToDefault() {
+		documentLocation = Paths.get(session.getExecutionRootDirectory(), "documentation").toFile();
+		try {
+			Files.createDirectories(documentLocation.toPath());
+		} catch (IOException e) {
+			getLog().error(e.getMessage());
+			getLog().error("documentation folder could not be created. Document location set to root directory.");
+			documentLocation = Paths.get(session.getExecutionRootDirectory()).toFile();
+		}
+		if (!documentLocation.exists()) {
+			documentLocation = Paths.get(session.getExecutionRootDirectory()).toFile();
+		}
+		if (project.isExecutionRoot()) {
+			getLog().info("documentLocation in execution pom undefined");
+		}
+		getLog().info("Documentation location was set to default: " + documentLocation.getAbsolutePath());
 	}
 
 	/**
@@ -115,7 +145,6 @@ public class DocumentationMojo extends AbstractMojo {
 				return docLocationChild.getValue();
 			}
 		}
-
 		return null;
 	}
 

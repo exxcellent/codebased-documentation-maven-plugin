@@ -3,7 +3,6 @@ package collectors.models;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.maven.model.Dependency;
 import org.apache.maven.project.MavenProject;
 
 public class MavenInfoObject extends InfoObject{

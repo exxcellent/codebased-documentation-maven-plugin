@@ -50,11 +50,9 @@ public class FileAggregator {
 	 */
 	public void aggregateFilesTo(File folderPath, String fileNameSuffix) {
 
-		log.info("-- AGGREGATING FILES --");
-		FileWriter writer = new FileWriter(log);
 		String projectName = findProjectName();
 
-		log.info("  - MAVEN FILES - ");
+		log.info("    - MAVEN FILES - ");
 		List<File> mavenInfoFiles = findFiles(MavenInfoCollector.FOLDER_NAME, MavenInfoCollector.FILE_NAME);
 		List<MavenInfoObject> mavenJsonObjects = createJSONObjects(mavenInfoFiles, MavenInfoObject.class);
 		// TODO process InfoObjects
@@ -68,8 +66,8 @@ public class FileAggregator {
 		CollectedMavenInfoObject mavenCollection = new CollectedMavenInfoObject(projectName);
 		mavenCollection.setModules(mavenJsonObjects);
 		mavenCollection.setModuleDependencies(moduleDependencies);
-		writer.writeInfoToJSONFile(folderPath.getAbsolutePath(), MavenInfoCollector.FILE_NAME + fileNameSuffix,
-				mavenCollection);
+		FileWriter.writeInfoToJSONFile(folderPath.getAbsolutePath(), MavenInfoCollector.FILE_NAME + fileNameSuffix,
+				mavenCollection, log);
 		
 	}
 
