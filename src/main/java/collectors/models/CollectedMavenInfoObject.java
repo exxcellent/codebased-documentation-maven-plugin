@@ -7,7 +7,7 @@ import java.util.Map;
 public class CollectedMavenInfoObject extends InfoObject{
 	
 	private Map<String, List<String>> moduleDependencies;
-	private List<MavenInfoObject> modules;
+	private List<ModuleInfoObject> modules;
 	
 	public CollectedMavenInfoObject(String projectName) {
 		super(projectName);
@@ -28,11 +28,11 @@ public class CollectedMavenInfoObject extends InfoObject{
 		moduleDependencies.put(node, edges);
 	}
 
-	public List<MavenInfoObject> getModules() {
+	public List<ModuleInfoObject> getModules() {
 		return modules;
 	}
 
-	public void setModules(List<MavenInfoObject> modules) {
+	public void setModules(List<ModuleInfoObject> modules) {
 		this.modules = modules;
 	}
 

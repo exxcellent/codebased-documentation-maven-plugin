@@ -5,7 +5,7 @@ import java.util.List;
 
 import org.apache.maven.project.MavenProject;
 
-public class MavenInfoObject extends InfoObject{
+public class ModuleInfoObject extends InfoObject{
 	
 	private String artifactID;
 	private String groupID;
@@ -15,7 +15,7 @@ public class MavenInfoObject extends InfoObject{
 	private List<DependencyInfoObject> dependencies;
 	private List<String> dependsOn;
 	
-	public MavenInfoObject(String name, String artifactID, String groupId, String version, String tag, List<DependencyInfoObject> dependencies, List<String> dependsOn) {
+	public ModuleInfoObject(String name, String artifactID, String groupId, String version, String tag, List<DependencyInfoObject> dependencies, List<String> dependsOn) {
 		super(name);
 		this.artifactID = artifactID;
 		this.groupID = groupId;
@@ -25,7 +25,7 @@ public class MavenInfoObject extends InfoObject{
 		this.dependsOn = dependsOn;
 	}
 
-	public MavenInfoObject(MavenProject project, List<DependencyInfoObject> dependencies, List<String> dependsOn) {
+	public ModuleInfoObject(MavenProject project, List<DependencyInfoObject> dependencies, List<String> dependsOn) {
 		super(project.getName());
 		this.artifactID = project.getArtifactId();
 		this.groupID = project.getGroupId();

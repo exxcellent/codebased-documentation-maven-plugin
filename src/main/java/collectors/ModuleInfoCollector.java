@@ -10,17 +10,16 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
 
 import collectors.models.DependencyInfoObject;
-import collectors.models.MavenInfoObject;
+import collectors.models.ModuleInfoObject;
 import filemanagement.FileWriter;
 
 /**
- * Collects info available from Maven (currently: Modules and their dependence
- * onto each other)
+ * Collects info available from Maven about modules and their dependencies.
  * 
  * @author gmittmann
  *
  */
-public class MavenInfoCollector implements InformationCollector {
+public class ModuleInfoCollector implements InformationCollector {
 
 	private MavenProject project;
 	private MavenSession session;
@@ -28,7 +27,7 @@ public class MavenInfoCollector implements InformationCollector {
 
 	public static final String FILE_NAME = "mavenInformation";
 
-	public MavenInfoCollector(MavenProject project, MavenSession session, Log log) {
+	public ModuleInfoCollector(MavenProject project, MavenSession session, Log log) {
 		this.project = project;
 		this.session = session;
 		this.log = log;
@@ -39,7 +38,7 @@ public class MavenInfoCollector implements InformationCollector {
 	 * stores them into a file in the target directory
 	 */
 	public void collectInfo() {
-		log.info("  -- COLLECTING MAVEN INFO --");
+		log.info("  -- COLLECTING MODULE INFO --");
 
 		String dirPath = Paths.get(project.getBasedir().getAbsolutePath(), "target", FOLDER_NAME).toString();
 		log.info("target folder: " + dirPath);
@@ -57,7 +56,7 @@ public class MavenInfoCollector implements InformationCollector {
 		List<DependencyInfoObject> dependencies = turnToDependencyInfoObject(
 				listNonTestDependencies(project.getDependencies()));
 		
-		MavenInfoObject info = new MavenInfoObject(project, dependencies, dependsOn);
+		ModuleInfoObject info = new ModuleInfoObject(project, dependencies, dependsOn);
 		
 		FileWriter.writeInfoToJSONFile(dirPath, FILE_NAME, info, log);
 

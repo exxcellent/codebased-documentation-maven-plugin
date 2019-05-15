@@ -19,10 +19,10 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
-import collectors.MavenInfoCollector;
+import collectors.ModuleInfoCollector;
 import collectors.models.CollectedMavenInfoObject;
 import collectors.models.InfoObject;
-import collectors.models.MavenInfoObject;
+import collectors.models.ModuleInfoObject;
 
 /**
  * Class for gathering and combining information files.
@@ -53,12 +53,12 @@ public class FileAggregator {
 		String projectName = findProjectName();
 
 		log.info("    - MAVEN FILES - ");
-		List<File> mavenInfoFiles = findFiles(MavenInfoCollector.FOLDER_NAME, MavenInfoCollector.FILE_NAME);
-		List<MavenInfoObject> mavenJsonObjects = createJSONObjects(mavenInfoFiles, MavenInfoObject.class);
+		List<File> mavenInfoFiles = findFiles(ModuleInfoCollector.FOLDER_NAME, ModuleInfoCollector.FILE_NAME);
+		List<ModuleInfoObject> mavenJsonObjects = createJSONObjects(mavenInfoFiles, ModuleInfoObject.class);
 		// TODO process InfoObjects
 
 		Map<String, List<String>> moduleDependencies = new HashMap<>();
-		for (MavenInfoObject currentObject : mavenJsonObjects) {
+		for (ModuleInfoObject currentObject : mavenJsonObjects) {
 			moduleDependencies.put(currentObject.getTag(), currentObject.getDependsOn());
 		}
 
@@ -66,7 +66,7 @@ public class FileAggregator {
 		CollectedMavenInfoObject mavenCollection = new CollectedMavenInfoObject(projectName);
 		mavenCollection.setModules(mavenJsonObjects);
 		mavenCollection.setModuleDependencies(moduleDependencies);
-		FileWriter.writeInfoToJSONFile(folderPath.getAbsolutePath(), MavenInfoCollector.FILE_NAME + fileNameSuffix,
+		FileWriter.writeInfoToJSONFile(folderPath.getAbsolutePath(), ModuleInfoCollector.FILE_NAME + fileNameSuffix,
 				mavenCollection, log);
 		
 	}
