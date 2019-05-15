@@ -30,18 +30,19 @@ import edu.emory.mathcs.backport.java.util.Arrays;
  */
 public class PackageInfoCollector implements InformationCollector {
 
-	private Map<String, Integer> packageWhiteListMap;
+	private Map<String, Integer> whiteListMap;
+	private Set<String> blackListSet;
 	private MavenProject project;
 	private Log log;
 
 	private Set<String> whiteListPackageNames = new HashSet<>();
-	private Set<String> blackListPackageNames = new HashSet<>();
 	private boolean defaultValuesUsed = false;
 
 	public static final String FILE_NAME = "packageInformation";
 
-	public PackageInfoCollector(Map<String, Integer> whiteList, MavenProject project, Log log) {
-		this.packageWhiteListMap = whiteList;
+	public PackageInfoCollector(Map<String, Integer> whiteList, Set<String> blackList, MavenProject project, Log log) {
+		this.whiteListMap = whiteList;
+		this.blackListSet = blackList;
 		this.project = project;
 		this.log = log;
 	}
@@ -51,13 +52,13 @@ public class PackageInfoCollector implements InformationCollector {
 		JavaProjectBuilder builder = new JavaProjectBuilder();
 		String baseFileName = Paths.get(project.getBasedir().getAbsolutePath(), "\\src", "main", "java").toString();
 
-		if (packageWhiteListMap == null || packageWhiteListMap.isEmpty()) {
-			packageWhiteListMap.put("", 1);
+		if (whiteListMap == null || whiteListMap.isEmpty()) {
+			whiteListMap.put("", 1);
 			log.warn("No WhiteList of packages defined! The results might not be as intended.");
 			log.warn("Default values set. BaseFile: " + baseFileName + "; Depth: 1");
 			defaultValuesUsed = true;
 		}
-		whiteListPackageNames = packageWhiteListMap.keySet();
+		whiteListPackageNames = whiteListMap.keySet();
 
 		Map<String, Set<String>> packageDependencies = new HashMap<>();
 
@@ -96,13 +97,13 @@ public class PackageInfoCollector implements InformationCollector {
 		for (String name : whiteListPackageNames) {
 			for (String otherName : whiteListPackageNames) {
 				if (!otherName.equals(name) && otherName.startsWith(name)) {
-					int otherNameDepth = otherName.split("\\.").length + packageWhiteListMap.get(otherName);
-					int nameDepth = name.split("\\.").length + packageWhiteListMap.get(name);
+					int otherNameDepth = otherName.split("\\.").length + whiteListMap.get(otherName);
+					int nameDepth = name.split("\\.").length + whiteListMap.get(name);
 					int diff = otherNameDepth - nameDepth;
 
 					filteredNames.remove(otherName);
 					if (diff > 0) {
-						packageWhiteListMap.put(name, packageWhiteListMap.get(name) + diff);
+						whiteListMap.put(name, whiteListMap.get(name) + diff);
 					}
 				}
 			}
@@ -136,14 +137,19 @@ public class PackageInfoCollector implements InformationCollector {
 				packageName += "." + currentFile.getName();
 			}
 			currentDepth++;
-			for (File file : currentFile.listFiles()) {
-				collectBySourceAdd(whiteListPackage, file, packageName, currentDepth, builder, packageDependencies);
+			if (!isInBlackList(packageName)) {
+				for (File file : currentFile.listFiles()) {
+					collectBySourceAdd(whiteListPackage, file, packageName, currentDepth, builder, packageDependencies);
+				}
 			}
 			currentDepth = 0;
 		} else {
 			try {
 				JavaSource src = builder.addSource(currentFile);
-				addSetToMap(packageName, getRelevantImportNames(packageName, src.getImports()), packageDependencies);
+				if (!isInBlackList(packageName)) {
+					addSetToMap(packageName, getRelevantImportNames(packageName, src.getImports()),
+							packageDependencies);
+				}
 			} catch (IOException e) {
 				log.info("could not open file: " + currentFile.getAbsolutePath());
 			}
@@ -161,7 +167,7 @@ public class PackageInfoCollector implements InformationCollector {
 		Set<String> relevantImportPackages = new HashSet<>();
 
 		for (String currentImport : srcImports) {
-			if (isInBasePackage(currentImport)) {
+			if (isInWhiteList(currentImport) && !isInBlackList(currentImport)) {
 				String[] currentImportSplit = currentImport.split("\\.");
 				// remove last part to get package of imported class
 				currentImportSplit = (String[]) Arrays.copyOf(currentImportSplit, currentImportSplit.length - 1);
@@ -177,7 +183,8 @@ public class PackageInfoCollector implements InformationCollector {
 		}
 
 		if (defaultValuesUsed) {
-			log.warn("Used default values -> could not filter relevant imports");
+			log.warn("Used default values -> could not filter relevant imports"
+					+ ((blackListSet == null || blackListSet.isEmpty()) ? "." : " except filter by blacklist."));
 		}
 		return relevantImportPackages;
 	}
@@ -206,13 +213,22 @@ public class PackageInfoCollector implements InformationCollector {
 	 * @return true, if the given package is part of the whitelisted packages or
 	 *         there is no WhiteList.
 	 */
-	private boolean isInBasePackage(String packageName) {
+	private boolean isInWhiteList(String packageName) {
 		for (String base : whiteListPackageNames) {
 			if (packageName.startsWith(base)) { // TODO: check if startsWith is enough
 				return true;
 			}
 		}
 		return defaultValuesUsed;
+	}
+
+	private boolean isInBlackList(String packageName) {
+		for (String base : blackListSet) {
+			if (base != null && packageName.startsWith(base)) { // TODO: check if startsWith is enough
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
@@ -239,7 +255,7 @@ public class PackageInfoCollector implements InformationCollector {
 	}
 
 	private int getDepthValueOfPackage(String packageName) {
-		return packageWhiteListMap.get(packageName) == null ? 1 : packageWhiteListMap.get(packageName);
+		return whiteListMap.get(packageName) == null ? 1 : whiteListMap.get(packageName);
 	}
 
 }
