@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.AbstractMojo;
@@ -36,8 +37,11 @@ public class DocumentationMojo extends AbstractMojo {
 	@Parameter(property = "project", defaultValue = "${project}", readonly = true, required = true)
 	private MavenProject project;
 
-	@Parameter(property = "session", defaultValue = "${session}")
+	@Parameter(property = "session", defaultValue = "${session}", required = true)
 	private MavenSession session;
+	
+	@Parameter(property = "whiteList")
+	private Map<String, Integer> packageWhiteList;
 
 	public void execute() throws MojoExecutionException, MojoFailureException {
 
@@ -46,7 +50,7 @@ public class DocumentationMojo extends AbstractMojo {
 			ModuleInfoCollector mavenInfoCollector = new ModuleInfoCollector(project, session, getLog());
 			mavenInfoCollector.collectInfo();
 			
-			PackageInfoCollector packageInfoCollector = new PackageInfoCollector(project, getLog());
+			PackageInfoCollector packageInfoCollector = new PackageInfoCollector(packageWhiteList, project, getLog());
 			packageInfoCollector.collectInfo();
 		} else {
 			getLog().info("Skipping data collection: pom");

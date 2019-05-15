@@ -3,7 +3,6 @@ package collectors;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -23,7 +22,7 @@ import edu.emory.mathcs.backport.java.util.Arrays;
  * Collects information about the packages and their dependencies. Can be
  * started with a WhiteList of Packages. Then, only these and their sub-packages
  * will be looked at. If there is no WhiteList, all Packages in the project are
- * analysed. The maxDepth is important to define the granularity of a package.
+ * analyzed. The maxDepth is important to define the granularity of a package.
  * If the maxDepth was 0, there would be just one big package.
  * 
  * @author gmittmann
@@ -31,39 +30,43 @@ import edu.emory.mathcs.backport.java.util.Arrays;
  */
 public class PackageInfoCollector implements InformationCollector {
 
+	private Map<String, Integer> packageWhiteListMap;
 	private MavenProject project;
 	private Log log;
 
-	private int maxDepth = 2;
 	private Set<String> whiteListPackageNames = new HashSet<>();
 	private Set<String> blackListPackageNames = new HashSet<>();
+	private boolean defaultValuesUsed = false;
 
 	public static final String FILE_NAME = "packageInformation";
 
-	public PackageInfoCollector(MavenProject project, Log log) {
+	public PackageInfoCollector(Map<String, Integer> whiteList, MavenProject project, Log log) {
+		this.packageWhiteListMap = whiteList;
 		this.project = project;
 		this.log = log;
 	}
 
 	@Override
 	public void collectInfo() {
-		whiteListPackageNames.add("de.bogenliga.application");
 		JavaProjectBuilder builder = new JavaProjectBuilder();
 		String baseFileName = Paths.get(project.getBasedir().getAbsolutePath(), "\\src", "main", "java").toString();
-		log.info(baseFileName);
+
+		if (packageWhiteListMap == null || packageWhiteListMap.isEmpty()) {
+			packageWhiteListMap.put("", 1);
+			log.warn("No WhiteList of packages defined! The results might not be as intended.");
+			log.warn("Default values set. BaseFile: " + baseFileName + "; Depth: 1");
+			defaultValuesUsed = true;
+		}
+		whiteListPackageNames = packageWhiteListMap.keySet();
 
 		Map<String, Set<String>> packageDependencies = new HashMap<>();
 
 		File baseFile = new File(baseFileName);
-		if (whiteListPackageNames != null && !whiteListPackageNames.isEmpty()) {
+		if (baseFile.exists()) {
 			whiteListPackageNames = filterWhiteList();
 			for (String name : whiteListPackageNames) {
 				File dir = Paths.get(baseFileName, name.split("\\.")).toFile();
-				collectBySourceAdd(dir, name, 0, builder, packageDependencies);
-			}
-		} else if (baseFile.exists()){
-			for (File file : baseFile.listFiles()) {
-				collectBySourceAdd(file, "", 0, builder, packageDependencies);
+				collectBySourceAdd(name, dir, name, 0, builder, packageDependencies);
 			}
 		}
 
@@ -78,6 +81,33 @@ public class PackageInfoCollector implements InformationCollector {
 				log.info("  -" + pkg);
 			}
 		}
+	}
+
+	/**
+	 * Filters the whiteList by removing subpackages. If a subpackage is found and
+	 * the associated depth of this one leads to more packages reached than the with
+	 * the other package, the value of the package is overwritten to reach them,
+	 * too.
+	 * 
+	 * @return Set of String containing the remaining package names.
+	 */
+	private Set<String> filterWhiteList() {
+		Set<String> filteredNames = new HashSet<>(whiteListPackageNames);
+		for (String name : whiteListPackageNames) {
+			for (String otherName : whiteListPackageNames) {
+				if (!otherName.equals(name) && otherName.startsWith(name)) {
+					int otherNameDepth = otherName.split("\\.").length + packageWhiteListMap.get(otherName);
+					int nameDepth = name.split("\\.").length + packageWhiteListMap.get(name);
+					int diff = otherNameDepth - nameDepth;
+
+					filteredNames.remove(otherName);
+					if (diff > 0) {
+						packageWhiteListMap.put(name, packageWhiteListMap.get(name) + diff);
+					}
+				}
+			}
+		}
+		return filteredNames;
 	}
 
 	/**
@@ -98,24 +128,22 @@ public class PackageInfoCollector implements InformationCollector {
 	 * @param packageDependencies Map into which the package Dependencies shall be
 	 *                            saved.
 	 */
-	private void collectBySourceAdd(File currentFile, String packageName, int currentDepth, JavaProjectBuilder builder,
-			Map<String, Set<String>> packageDependencies) {
+	private void collectBySourceAdd(String whiteListPackage, File currentFile, String packageName, int currentDepth,
+			JavaProjectBuilder builder, Map<String, Set<String>> packageDependencies) {
 
 		if (currentFile.isDirectory()) {
-			if (currentDepth == 0 && whiteListPackageNames.isEmpty()) {
-				packageName += currentFile.getName();
-			} else if (currentDepth <= maxDepth && currentDepth != 0) {
+			if (currentDepth <= getDepthValueOfPackage(whiteListPackage) && currentDepth != 0) {
 				packageName += "." + currentFile.getName();
 			}
 			currentDepth++;
 			for (File file : currentFile.listFiles()) {
-				collectBySourceAdd(file, packageName, currentDepth, builder, packageDependencies);
+				collectBySourceAdd(whiteListPackage, file, packageName, currentDepth, builder, packageDependencies);
 			}
 			currentDepth = 0;
 		} else {
 			try {
 				JavaSource src = builder.addSource(currentFile);
-				addSetToMap(packageName, getRelevantImportNames(src.getImports()), packageDependencies);
+				addSetToMap(packageName, getRelevantImportNames(packageName, src.getImports()), packageDependencies);
 			} catch (IOException e) {
 				log.info("could not open file: " + currentFile.getAbsolutePath());
 			}
@@ -129,28 +157,33 @@ public class PackageInfoCollector implements InformationCollector {
 	 * @param srcImports List of Strings representing the imports in this source.
 	 * @return Shortened and (maybe) filtered import Strings.
 	 */
-	private Set<String> getRelevantImportNames(List<String> srcImports) {
+	private Set<String> getRelevantImportNames(String currentPackage, List<String> srcImports) {
 		Set<String> relevantImportPackages = new HashSet<>();
 
 		for (String currentImport : srcImports) {
-			if ((whiteListPackageNames == null || whiteListPackageNames.isEmpty()) || isInBasePackage(currentImport)) {
+			if (isInBasePackage(currentImport)) {
 				String[] currentImportSplit = currentImport.split("\\.");
-				// remove last bit
+				// remove last part to get package of imported class
 				currentImportSplit = (String[]) Arrays.copyOf(currentImportSplit, currentImportSplit.length - 1);
 				// remove anything longer than maxLength
 				int maxBaseLength = getMaxBaseLength(currentImport);
 				if (currentImportSplit.length > maxBaseLength && maxBaseLength != -1) {
 					currentImportSplit = (String[]) Arrays.copyOf(currentImportSplit, maxBaseLength);
 				}
-				relevantImportPackages.add(String.join(".", currentImportSplit));
+				if (!String.join(".", currentImportSplit).equals(currentPackage)) {
+					relevantImportPackages.add(String.join(".", currentImportSplit));
+				}
 			}
 		}
 
+		if (defaultValuesUsed) {
+			log.warn("Used default values -> could not filter relevant imports");
+		}
 		return relevantImportPackages;
 	}
 
 	/**
-	 * Add teh given Set to the given Map under the given name.
+	 * Add the given Set to the given Map under the given name.
 	 * 
 	 * @param packageName key under which the set id to be saved.
 	 * @param imports     set of Strings that are to be saved.
@@ -165,10 +198,13 @@ public class PackageInfoCollector implements InformationCollector {
 	}
 
 	/**
-	 * Check if the given package is in the whitelisted packages.
+	 * Check if the given package is in the whitelisted packages. If there were no
+	 * whitelisted packages and the default value was used, this method always
+	 * returns true.
 	 * 
 	 * @param packageName name of the package to be checked. Has to be full name.
-	 * @return true, if the given package is part of the whitelisted packages.
+	 * @return true, if the given package is part of the whitelisted packages or
+	 *         there is no WhiteList.
 	 */
 	private boolean isInBasePackage(String packageName) {
 		for (String base : whiteListPackageNames) {
@@ -176,14 +212,14 @@ public class PackageInfoCollector implements InformationCollector {
 				return true;
 			}
 		}
-		return false;
+		return defaultValuesUsed;
 	}
 
 	/**
-	 * Returns the maximum allowed depth. If there is no whitelist, the defined
-	 * maxDepth is returned. If the WhiteList is not empty, the package that
+	 * Returns the maximum allowed depth. If there is no whitelist, the default
+	 * value of 1 is returned. If the WhiteList is not empty, the package that
 	 * contains the given package is searched for and its length added to the
-	 * maxDepth is returned.
+	 * defined depth is returned.
 	 * 
 	 * @param packageName Name of the package, whose allowed maximum depth is
 	 *                    searched for.
@@ -191,61 +227,19 @@ public class PackageInfoCollector implements InformationCollector {
 	 *         is not contained in these, -1 is returned.
 	 */
 	private int getMaxBaseLength(String packageName) {
-		if (whiteListPackageNames == null || whiteListPackageNames.isEmpty()) {
-			return maxDepth;
+		if (defaultValuesUsed) {
+			return 1;
 		}
 		for (String base : whiteListPackageNames) {
 			if (packageName.startsWith(base)) {
-				return base.split("\\.").length + maxDepth;
+				return base.split("\\.").length + getDepthValueOfPackage(base);
 			}
 		}
 		return -1;
 	}
 
-	/**
-	 * Returns a set of the given packages, in which the packages that are in the
-	 * set twice in form of package and subpackage (e.g. example.common and
-	 * example.common.util) are removed. 
-	 * 
-	 * @param packageSet Set of package names that is to be filtered.
-	 * @return Filtered set.
-	 */
-	private Set<String> removeSubPackages(Set<String> packageSet) {
-		List<String> shortForms = new ArrayList<>();
-		for (String str : packageSet) {
-			if (str.split("\\.").length < getMaxBaseLength(str)) {
-				shortForms.add(str);
-//				log.info("SHORT: " + str);
-			}
-		}
-		Set<String> returnSet = new HashSet<String>();
-		returnSet.addAll(shortForms);
-		for (String str : packageSet) {
-			boolean retain = true;
-			for (String shortForm : shortForms) {
-				if (str.startsWith(shortForm)) {
-//					log.info("remove: " + str);
-					retain = false;
-					break;
-				}
-			}
-			if (retain) {
-				returnSet.add(str);
-			}
-		}
-		return returnSet;
+	private int getDepthValueOfPackage(String packageName) {
+		return packageWhiteListMap.get(packageName) == null ? 1 : packageWhiteListMap.get(packageName);
 	}
-	
-	private Set<String> filterWhiteList() {
-		Set<String> filteredNames = new HashSet<>(whiteListPackageNames);
-		for (String name : whiteListPackageNames) {
-			for (String otherName : whiteListPackageNames) {
-				if (!otherName.equals(name) && otherName.startsWith(name)) {
-					filteredNames.remove(otherName);
-				}
-			}
-		}
-		return filteredNames;
-	}
-	
+
 }
