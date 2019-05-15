@@ -8,6 +8,7 @@ public class CollectedMavenInfoObject extends InfoObject{
 	
 	private Map<String, List<String>> moduleDependencies;
 	private List<ModuleInfoObject> modules;
+	private List<ComponentInfoObject> components;
 	
 	public CollectedMavenInfoObject(String projectName) {
 		super(projectName);
@@ -34,6 +35,14 @@ public class CollectedMavenInfoObject extends InfoObject{
 
 	public void setModules(List<ModuleInfoObject> modules) {
 		this.modules = modules;
+	}
+
+	public List<ComponentInfoObject> getComponents() {
+		return components;
+	}
+
+	public void setComponents(List<ComponentInfoObject> components) {
+		this.components = components;
 	}
 
 }

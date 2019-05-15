@@ -5,7 +5,7 @@ import java.util.List;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Exclusion;
 
-public class DependencyInfoObject extends InfoObject{
+public class ProjectInfoObject extends InfoObject{
 
 	private String groupId;
 	private String artifactId;
@@ -14,11 +14,11 @@ public class DependencyInfoObject extends InfoObject{
 	private String scope;
 	private List<Exclusion> exclusions;
 	
-	public DependencyInfoObject(String name) {
+	public ProjectInfoObject(String name) {
 		super(name);
 	}
 	
-	public DependencyInfoObject(String name, String groupId, String artifactId, String version, String type, String scope, List<Exclusion> exclusions) {
+	public ProjectInfoObject(String name, String groupId, String artifactId, String version, String type, String scope, List<Exclusion> exclusions) {
 		super(name);
 		this.groupId = groupId;
 		this.artifactId = artifactId;
@@ -28,7 +28,7 @@ public class DependencyInfoObject extends InfoObject{
 		this.exclusions = exclusions;
 	}
 	
-	public DependencyInfoObject(Dependency dependency) {
+	public ProjectInfoObject(Dependency dependency) {
 		super(dependency.getManagementKey());
 		this.groupId = dependency.getGroupId();
 		this.artifactId = dependency.getArtifactId();

@@ -20,9 +20,12 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
 import collectors.ModuleInfoCollector;
+import collectors.ComponentInfoCollector;
 import collectors.models.CollectedMavenInfoObject;
+import collectors.models.ComponentInfoObject;
 import collectors.models.InfoObject;
 import collectors.models.ModuleInfoObject;
+import collectors.models.PackageInfoObject;
 
 /**
  * Class for gathering and combining information files.
@@ -52,20 +55,26 @@ public class FileAggregator {
 
 		String projectName = findProjectName();
 
-		log.info("    - MAVEN FILES - ");
-		List<File> mavenInfoFiles = findFiles(ModuleInfoCollector.FOLDER_NAME, ModuleInfoCollector.FILE_NAME);
-		List<ModuleInfoObject> mavenJsonObjects = createJSONObjects(mavenInfoFiles, ModuleInfoObject.class);
+		log.info("    - MODULE FILES - ");
+		List<File> moduleInfoFiles = findFiles(ModuleInfoCollector.FOLDER_NAME, ModuleInfoCollector.FILE_NAME);
+		List<ModuleInfoObject> mavenJsonObjects = createJSONObjects(moduleInfoFiles, ModuleInfoObject.class);
 		// TODO process InfoObjects
 
 		Map<String, List<String>> moduleDependencies = new HashMap<>();
 		for (ModuleInfoObject currentObject : mavenJsonObjects) {
 			moduleDependencies.put(currentObject.getTag(), currentObject.getDependsOn());
 		}
-
+		
+		log.info("    - PACKAGE FILES - ");
+		List<File> componentInfoFiles = findFiles(ComponentInfoCollector.FOLDER_NAME, ComponentInfoCollector.FILE_NAME);
+		List<ComponentInfoObject> packageJsonObjects = createJSONObjects(componentInfoFiles, ComponentInfoObject.class);
+		
+		log.info("    - AGGREGATE - ");
 		/* join information in one file */
 		CollectedMavenInfoObject mavenCollection = new CollectedMavenInfoObject(projectName);
 		mavenCollection.setModules(mavenJsonObjects);
 		mavenCollection.setModuleDependencies(moduleDependencies);
+		mavenCollection.setComponents(packageJsonObjects);
 		FileWriter.writeInfoToJSONFile(folderPath.getAbsolutePath(), ModuleInfoCollector.FILE_NAME + fileNameSuffix,
 				mavenCollection, log);
 		

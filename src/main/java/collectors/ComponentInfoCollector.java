@@ -3,6 +3,7 @@ package collectors;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -16,7 +17,10 @@ import org.apache.maven.project.MavenProject;
 import com.thoughtworks.qdox.JavaProjectBuilder;
 import com.thoughtworks.qdox.model.JavaSource;
 
+import collectors.models.ComponentInfoObject;
+import collectors.models.PackageInfoObject;
 import edu.emory.mathcs.backport.java.util.Arrays;
+import filemanagement.FileWriter;
 
 /**
  * Collects information about the packages and their dependencies. Can be
@@ -28,7 +32,7 @@ import edu.emory.mathcs.backport.java.util.Arrays;
  * @author gmittmann
  *
  */
-public class PackageInfoCollector implements InformationCollector {
+public class ComponentInfoCollector implements InformationCollector {
 
 	private Map<String, Integer> whiteListMap;
 	private Set<String> blackListSet;
@@ -38,9 +42,9 @@ public class PackageInfoCollector implements InformationCollector {
 	private Set<String> whiteListPackageNames = new HashSet<>();
 	private boolean defaultValuesUsed = false;
 
-	public static final String FILE_NAME = "packageInformation";
+	public static final String FILE_NAME = "componentInformation";
 
-	public PackageInfoCollector(Map<String, Integer> whiteList, Set<String> blackList, MavenProject project, Log log) {
+	public ComponentInfoCollector(Map<String, Integer> whiteList, Set<String> blackList, MavenProject project, Log log) {
 		this.whiteListMap = whiteList;
 		this.blackListSet = blackList;
 		this.project = project;
@@ -71,17 +75,27 @@ public class PackageInfoCollector implements InformationCollector {
 			}
 		}
 
+//		log.info("-----------------------------------------------");
 //		for (Entry<String, Set<String>> entry : packageDependencies.entrySet()) {
-//			entry.setValue(removeSubPackages(entry.getValue()));
+//			log.info(entry.getKey());
+//			for (String pkg : entry.getValue()) {
+//				log.info("  -" + pkg);
+//			}
 //		}
-
-		log.info("-----------------------------------------------");
+		
+		String dirPath = Paths.get(project.getBasedir().getAbsolutePath(), "target", FOLDER_NAME).toString();
+		log.info("target file: " + FILE_NAME);
+		
+		List<PackageInfoObject> packageInfo = new ArrayList<>();
 		for (Entry<String, Set<String>> entry : packageDependencies.entrySet()) {
-			log.info(entry.getKey());
-			for (String pkg : entry.getValue()) {
-				log.info("  -" + pkg);
-			}
+			PackageInfoObject pkgInfo = new PackageInfoObject(entry.getKey());
+			pkgInfo.setDependsOn(entry.getValue());
+			packageInfo.add(pkgInfo);
 		}
+		
+		ComponentInfoObject info = new ComponentInfoObject(project.getName());
+		info.setComponents(packageInfo);
+		FileWriter.writeInfoToJSONFile(dirPath, FILE_NAME, info, log);
 	}
 
 	/**

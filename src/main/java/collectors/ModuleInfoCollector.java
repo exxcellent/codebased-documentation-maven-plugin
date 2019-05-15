@@ -9,7 +9,7 @@ import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
 
-import collectors.models.DependencyInfoObject;
+import collectors.models.ProjectInfoObject;
 import collectors.models.ModuleInfoObject;
 import filemanagement.FileWriter;
 
@@ -25,7 +25,7 @@ public class ModuleInfoCollector implements InformationCollector {
 	private MavenSession session;
 	private Log log;
 
-	public static final String FILE_NAME = "mavenInformation";
+	public static final String FILE_NAME = "moduleInformation";
 
 	public ModuleInfoCollector(MavenProject project, MavenSession session, Log log) {
 		this.project = project;
@@ -53,7 +53,7 @@ public class ModuleInfoCollector implements InformationCollector {
 		}
 		
 		/*Create DependencyInfoObjects for the non test dependencies of the current project*/
-		List<DependencyInfoObject> dependencies = turnToDependencyInfoObject(
+		List<ProjectInfoObject> dependencies = turnToDependencyInfoObject(
 				listNonTestDependencies(project.getDependencies()));
 		
 		ModuleInfoObject info = new ModuleInfoObject(project, dependencies, dependsOn);
@@ -88,11 +88,11 @@ public class ModuleInfoCollector implements InformationCollector {
 	 *                     turned into DependencyInfoObjects.
 	 * @return List of DependencyInfoObjects
 	 */
-	private List<DependencyInfoObject> turnToDependencyInfoObject(List<Dependency> dependencies) {
+	private List<ProjectInfoObject> turnToDependencyInfoObject(List<Dependency> dependencies) {
 
-		List<DependencyInfoObject> objects = new ArrayList<>();
+		List<ProjectInfoObject> objects = new ArrayList<>();
 		for (Dependency dependency : dependencies) {
-			DependencyInfoObject obj = new DependencyInfoObject(dependency);
+			ProjectInfoObject obj = new ProjectInfoObject(dependency);
 			objects.add(obj);
 		}
 

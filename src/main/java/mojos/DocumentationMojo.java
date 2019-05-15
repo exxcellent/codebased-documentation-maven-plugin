@@ -19,7 +19,7 @@ import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import collectors.ModuleInfoCollector;
-import collectors.PackageInfoCollector;
+import collectors.ComponentInfoCollector;
 import filemanagement.FileAggregator;
 
 /**
@@ -54,7 +54,7 @@ public class DocumentationMojo extends AbstractMojo {
 			ModuleInfoCollector mavenInfoCollector = new ModuleInfoCollector(project, session, getLog());
 			mavenInfoCollector.collectInfo();
 			
-			PackageInfoCollector packageInfoCollector = new PackageInfoCollector(packageWhiteList, packageBlackList, project, getLog());
+			ComponentInfoCollector packageInfoCollector = new ComponentInfoCollector(packageWhiteList, packageBlackList, project, getLog());
 			packageInfoCollector.collectInfo();
 		} else {
 			getLog().info("Skipping data collection: pom");
