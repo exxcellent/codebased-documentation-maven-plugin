@@ -17,8 +17,8 @@ import org.apache.maven.project.MavenProject;
 import com.thoughtworks.qdox.JavaProjectBuilder;
 import com.thoughtworks.qdox.model.JavaSource;
 
-import collectors.models.ComponentInfoObject;
-import collectors.models.PackageInfoObject;
+import collectors.models.maven.ComponentInfoObject;
+import collectors.models.maven.PackageInfoObject;
 import edu.emory.mathcs.backport.java.util.Arrays;
 import filemanagement.FileWriter;
 

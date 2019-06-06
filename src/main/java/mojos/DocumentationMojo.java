@@ -19,6 +19,8 @@ import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import collectors.ModuleInfoCollector;
+import collectors.models.AnnotationType;
+import collectors.APIInfoCollector;
 import collectors.ComponentInfoCollector;
 import filemanagement.FileAggregator;
 
@@ -40,12 +42,28 @@ public class DocumentationMojo extends AbstractMojo {
 
 	@Parameter(property = "session", defaultValue = "${session}", required = true)
 	private MavenSession session;
-	
+
 	@Parameter(property = "packageWhiteList")
 	private Map<String, Integer> packageWhiteList;
-	
+
 	@Parameter(property = "packageBlackList")
 	private Set<String> packageBlackList;
+
+	@Parameter(property = "system", defaultValue = "default_system")
+	private String system;
+
+	@Parameter(property = "subsystem", defaultValue = "default_subsystem")
+	private String subsystem;
+	
+	@Parameter(property = "annotation", defaultValue = "SPRING")
+	private AnnotationType annotationType;
+	
+	@Parameter(property = "swaggerFilePaths")
+	private List<String> swaggerFilePaths;
+
+	public static final String MAVEN_AGGREGATE_NAME = "mavenInfo";
+	public static final String API_AGGREGATE_NAME = "apiInfo";
+	public static final String SUFFIX = "ALL";
 
 	public void execute() throws MojoExecutionException, MojoFailureException {
 
@@ -53,12 +71,18 @@ public class DocumentationMojo extends AbstractMojo {
 		if (!project.getPackaging().equals("pom")) {
 			ModuleInfoCollector mavenInfoCollector = new ModuleInfoCollector(project, session, getLog());
 			mavenInfoCollector.collectInfo();
-			
-			ComponentInfoCollector packageInfoCollector = new ComponentInfoCollector(packageWhiteList, packageBlackList, project, getLog());
+
+			ComponentInfoCollector packageInfoCollector = new ComponentInfoCollector(packageWhiteList, packageBlackList,
+					project, getLog());
 			packageInfoCollector.collectInfo();
+			
+			APIInfoCollector apiInfoCollector = new APIInfoCollector(project, getLog(), annotationType, swaggerFilePaths);
+			apiInfoCollector.collectInfo();
 		} else {
 			getLog().info("Skipping data collection: pom");
 		}
+
+		
 
 		/* If this is the last project/module start file aggregation */
 		List<MavenProject> sortedProjects = session.getProjectDependencyGraph().getSortedProjects();
@@ -66,10 +90,12 @@ public class DocumentationMojo extends AbstractMojo {
 			getLog().info("  -- AGGREGATING FILES --");
 			setDocumentLocation();
 			FileAggregator aggregator = new FileAggregator(session, getLog());
-			aggregator.aggregateFilesTo(documentLocation, "ALL");
+			aggregator.aggregateMavenFilesTo(documentLocation, SUFFIX);
+			
 		}
 
 	}
+
 
 	/**
 	 * Sets the location to which the aggregated file will be written to. If the
@@ -78,6 +104,10 @@ public class DocumentationMojo extends AbstractMojo {
 	 * the defined value is used, if available, else the default value is applied.
 	 */
 	private void setDocumentLocation() {
+		MavenProject root = session.getTopLevelProject();
+		String subfolder = (root.getGroupId() + "_" + root.getArtifactId() + "_" + root.getVersion()).replaceAll(".,:", "_");
+		
+		
 		if (!project.isExecutionRoot()) {
 			setDocumentLocationByExecutionRoot();
 		}
@@ -88,7 +118,9 @@ public class DocumentationMojo extends AbstractMojo {
 		if (documentLocation == null) {
 			setDocumentLocationToDefault();
 		}
-
+		
+		documentLocation = Paths.get(documentLocation.getAbsolutePath(), subfolder).toFile();
+		
 	}
 
 	/**
@@ -100,7 +132,7 @@ public class DocumentationMojo extends AbstractMojo {
 		/* check value in aggregator pom and overwrite, if there is a value */
 		MavenProject root = session.getTopLevelProject();
 		for (MavenProject prj : session.getAllProjects()) {
-			if (project.isExecutionRoot()) {
+			if (prj.isExecutionRoot()) {
 				root = prj;
 			}
 		}

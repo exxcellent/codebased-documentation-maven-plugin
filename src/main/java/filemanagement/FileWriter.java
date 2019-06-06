@@ -23,7 +23,7 @@ import collectors.models.InfoObject;
  */
 public final class FileWriter {
 
-	public static final String CHARSET = "UTF-16";
+	public static final String CHARSET = "UTF-8";
 
 	private FileWriter() {
 

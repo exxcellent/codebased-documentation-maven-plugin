@@ -1,9 +1,11 @@
-package collectors.models;
+package collectors.models.maven;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.maven.project.MavenProject;
+
+import collectors.models.InfoObject;
 
 public class ModuleInfoObject extends InfoObject{
 	

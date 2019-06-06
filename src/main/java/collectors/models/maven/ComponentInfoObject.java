@@ -1,7 +1,9 @@
-package collectors.models;
+package collectors.models.maven;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import collectors.models.InfoObject;
 
 public class ComponentInfoObject extends InfoObject {
 	

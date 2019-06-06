@@ -6,13 +6,17 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
+import org.codehaus.plexus.util.xml.Xpp3Dom;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -20,12 +24,14 @@ import com.google.gson.JsonSyntaxException;
 import com.google.gson.stream.JsonReader;
 
 import collectors.ModuleInfoCollector;
+import collectors.APIInfoCollector;
 import collectors.ComponentInfoCollector;
-import collectors.models.CollectedMavenInfoObject;
-import collectors.models.ComponentInfoObject;
 import collectors.models.InfoObject;
-import collectors.models.ModuleInfoObject;
-import collectors.models.PackageInfoObject;
+import collectors.models.maven.CollectedMavenInfoObject;
+import collectors.models.maven.ComponentInfoObject;
+import collectors.models.maven.ModuleInfoObject;
+import collectors.models.restapi.APIInfoObject;
+import mojos.DocumentationMojo;
 
 /**
  * Class for gathering and combining information files.
@@ -51,7 +57,7 @@ public class FileAggregator {
 	 *                       saved
 	 * @param fileNameSuffix suffix to be appended to the file name of the topics
 	 */
-	public void aggregateFilesTo(File folderPath, String fileNameSuffix) {
+	public void aggregateMavenFilesTo(File folderPath, String fileNameSuffix) {
 
 		String projectName = findProjectName();
 
@@ -64,20 +70,37 @@ public class FileAggregator {
 		for (ModuleInfoObject currentObject : mavenJsonObjects) {
 			moduleDependencies.put(currentObject.getTag(), currentObject.getDependsOn());
 		}
-		
-		log.info("    - PACKAGE FILES - ");
+
+		log.info("    - COMPONENT FILES - ");
 		List<File> componentInfoFiles = findFiles(ComponentInfoCollector.FOLDER_NAME, ComponentInfoCollector.FILE_NAME);
 		List<ComponentInfoObject> packageJsonObjects = createJSONObjects(componentInfoFiles, ComponentInfoObject.class);
-		
+
 		log.info("    - AGGREGATE - ");
 		/* join information in one file */
-		CollectedMavenInfoObject mavenCollection = new CollectedMavenInfoObject(projectName);
+		CollectedMavenInfoObject mavenCollection = new CollectedMavenInfoObject(projectName, findProjectTag(),
+				findSystem(), findSubsystem());
 		mavenCollection.setModules(mavenJsonObjects);
 		mavenCollection.setModuleDependencies(moduleDependencies);
 		mavenCollection.setComponents(packageJsonObjects);
-		FileWriter.writeInfoToJSONFile(folderPath.getAbsolutePath(), ModuleInfoCollector.FILE_NAME + fileNameSuffix,
-				mavenCollection, log);
+		FileWriter.writeInfoToJSONFile(folderPath.getAbsolutePath(),
+				DocumentationMojo.MAVEN_AGGREGATE_NAME + fileNameSuffix, mavenCollection, log);
+
+	}
+	
+	public void aggregateAPIFilesTo(File folderPath, String fileNameSuffix) {
+		log.info("    - REST Interface File - ");
+		List<File> interfaceInfoFiles = findFiles(APIInfoCollector.FOLDER_NAME, APIInfoCollector.FILE_NAME);
+		List<APIInfoObject> apiInfoObjects = createJSONObjects(interfaceInfoFiles, APIInfoObject.class);
 		
+		APIInfoObject apiInfoObject = new APIInfoObject(findProjectName()); //TODO: name??
+		for(APIInfoObject info : apiInfoObjects) {
+			for (Entry<String, Set<String>> entry : info.getPathToMethod().entrySet()) {
+				apiInfoObject.addMethod(entry.getKey(), entry.getValue());
+			}
+		}
+		
+		log.info("    - AGGREGATE - ");
+		FileWriter.writeInfoToJSONFile(folderPath.getAbsolutePath(), DocumentationMojo.API_AGGREGATE_NAME, apiInfoObject, log);
 	}
 
 	/**
@@ -89,7 +112,45 @@ public class FileAggregator {
 	private String findProjectName() {
 		MavenProject root = session.getTopLevelProject();
 		return root.getName().isEmpty() ? (root.getGroupId() + ":" + root.getArtifactId()) : root.getName();
+	}
 
+	private String findProjectTag() {
+		MavenProject root = session.getTopLevelProject();
+		return (root.getGroupId() + "_" + root.getArtifactId() + "_" + root.getVersion()).replace(".", "-");
+	}
+
+	private String findSystem() {
+		MavenProject root = session.getTopLevelProject();
+		for (MavenProject prj : session.getAllProjects()) {
+			if (prj.isExecutionRoot()) {
+				root = prj;
+			}
+		}
+		String system =  extractFromConfigurationDOM(root.getPlugin("codebased-documentation:cd-maven-plugin").getConfiguration(),
+				"system");
+		
+		if (system == null) {
+			system = "default_system";
+		}
+		
+		return system;
+	}
+
+	private String findSubsystem() {
+		MavenProject root = session.getTopLevelProject();
+		for (MavenProject prj : session.getAllProjects()) {
+			if (prj.isExecutionRoot()) {
+				root = prj;
+			}
+		}
+		String subsystem = extractFromConfigurationDOM(root.getPlugin("codebased-documentation:cd-maven-plugin").getConfiguration(),
+				"subsystem");
+		
+		if (subsystem == null) {
+			subsystem = "default_subsystem";
+		}
+		
+		return subsystem;
 	}
 
 	/**
@@ -149,6 +210,24 @@ public class FileAggregator {
 		}
 
 		return objects;
+	}
+
+	/**
+	 * Tries to read the given parameter in the given object. If the object is not a
+	 * Xpp3Dom object or the parameter doesn't exist, returns null.
+	 * 
+	 * @param domObject object in which the parameter is searched for.
+	 * @param parameterName name of the parameter
+	 * @return value of the parameter or null, if object doesn't exist.
+	 */
+	private String extractFromConfigurationDOM(Object domObject, String parameterName) {
+		if (domObject instanceof Xpp3Dom) {
+			Xpp3Dom docLocationChild = ((Xpp3Dom) domObject).getChild(parameterName);
+			if (docLocationChild != null) {
+				return docLocationChild.getValue();
+			}
+		}
+		return null;
 	}
 
 }

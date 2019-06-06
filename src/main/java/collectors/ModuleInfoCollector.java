@@ -9,8 +9,8 @@ import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
 
-import collectors.models.ProjectInfoObject;
-import collectors.models.ModuleInfoObject;
+import collectors.models.maven.ModuleInfoObject;
+import collectors.models.maven.ProjectInfoObject;
 import filemanagement.FileWriter;
 
 /**

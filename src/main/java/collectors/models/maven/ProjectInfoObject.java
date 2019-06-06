@@ -1,9 +1,11 @@
-package collectors.models;
+package collectors.models.maven;
 
 import java.util.List;
 
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.Exclusion;
+
+import collectors.models.InfoObject;
 
 public class ProjectInfoObject extends InfoObject{
 
