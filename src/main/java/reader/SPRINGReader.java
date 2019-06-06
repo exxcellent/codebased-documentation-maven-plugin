@@ -141,7 +141,7 @@ public class SPRINGReader implements APIReader {
 					if (currentMapping.getRight() != null && baseMappings != null) {
 						for (Pair<String, String> base : baseMappings) {
 							pairList.add(new Pair<String, String>(
-									startWithoutSlash(base.getLeft()) + startWithSlash(currentMapping.getLeft()),
+									startWithEndsWithoutSlash(base.getLeft()) + startWithSlash(currentMapping.getLeft()),
 									currentMapping.getRight()));
 						}
 					} else if (currentMapping.getRight() != null) {
@@ -151,19 +151,19 @@ public class SPRINGReader implements APIReader {
 							for (Pair<String, String> base : baseMappings) {
 								if (base.getRight() != null) {
 									pairList.add(new Pair<String, String>(
-											startWithoutSlash(base.getLeft()) + startWithSlash(currentMapping.getLeft()),
+											startWithEndsWithoutSlash(base.getLeft()) + startWithSlash(currentMapping.getLeft()),
 											base.getRight()));
 								} else {
 									for (String httpMethod : HTTP_METHOD_TYPE) {
 										pairList.add(new Pair<String, String>(
-												startWithoutSlash(base.getLeft()) + startWithSlash(currentMapping.getLeft()),
+												startWithEndsWithoutSlash(base.getLeft()) + startWithSlash(currentMapping.getLeft()),
 												httpMethod));
 									}
 								}
 							}
 						} else {
 							for (String httpMethod : HTTP_METHOD_TYPE) {
-								pairList.add(new Pair<String, String>(startWithoutSlash(currentMapping.getLeft()),
+								pairList.add(new Pair<String, String>(startWithEndsWithoutSlash(currentMapping.getLeft()),
 										httpMethod));
 							}
 						}
@@ -261,18 +261,21 @@ public class SPRINGReader implements APIReader {
 	}
 
 	/**
-	 * Makes sure the given string does not start with a '/'.
+	 * Makes sure the given string starts with a '/' but does not end with '/'.
 	 * 
 	 * @param uri String to be brought to form.
 	 * @return the given String without a '/' in front.
 	 */
-	private String startWithoutSlash(String uri) {
+	private String startWithEndsWithoutSlash(String uri) {
 		uri = uri.trim();
-		if (uri.startsWith("/")) {
-			return uri.substring(1);
-		} else {
-			return uri;
+		if (!uri.startsWith("/")) {
+			uri = "/" + uri;
 		}
+		if (uri.endsWith("/")) {
+			uri = uri.substring(0, uri.length() - 2);
+		}
+		return uri;
+		
 	}
 
 }

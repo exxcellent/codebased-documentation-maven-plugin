@@ -38,12 +38,8 @@ import util.Pair;
 
 public class JAXRSReader implements APIReader {
 
-	private static final List<String> HTTP_METHODS = Arrays.asList(
-			GET.class.getSimpleName(), 
-			PUT.class.getSimpleName(),
-			POST.class.getSimpleName(), 
-			DELETE.class.getSimpleName(),
-			HEAD.class.getSimpleName(), 
+	private static final List<String> HTTP_METHODS = Arrays.asList(GET.class.getSimpleName(), PUT.class.getSimpleName(),
+			POST.class.getSimpleName(), DELETE.class.getSimpleName(), HEAD.class.getSimpleName(),
 			OPTIONS.class.getSimpleName());
 
 	private MavenProject project;
@@ -86,20 +82,28 @@ public class JAXRSReader implements APIReader {
 		}
 
 		if (applicationPath != null) {
+			applicationPath = formatBasePath(applicationPath);
 			List<Pair<String, String>> returnPaths = new ArrayList<>();
 			for (Pair<String, String> currentPair : paths) {
-				Pair<String, String> longPathPair = new Pair<>(applicationPath + currentPair.getLeft(),
+				Pair<String, String> longPathPair = new Pair<>(
+						applicationPath + formatConcatPath(currentPair.getLeft()), currentPair.getRight());
+				returnPaths.add(longPathPair);
+			}
+			return returnPaths;
+		} else {
+			List<Pair<String, String>> returnPaths = new ArrayList<>();
+			for (Pair<String, String> currentPair : paths) {
+				Pair<String, String> longPathPair = new Pair<>(formatBasePath(currentPair.getLeft()),
 						currentPair.getRight());
 				returnPaths.add(longPathPair);
 			}
 			return returnPaths;
 		}
-
-		return paths;
 	}
 
 	private Pair<String, String> getMethodAnnotations(JavaMethod method, String classPath) {
-		String path = classPath;
+		String path = formatConcatPath(classPath);
+		boolean pathWasChanged = false;
 		String meth = "";
 		for (JavaAnnotation annotation : method.getAnnotations()) {
 			String annotationClass = annotation.getType().getSimpleName();
@@ -108,15 +112,20 @@ public class JAXRSReader implements APIReader {
 				meth = extractHttpMethod(annotationClass);
 			} else if (annotationClass.equals(Path.class.getSimpleName())) {
 				path += annotation.getNamedParameter("value") == null ? ""
-						: "/" + annotation.getNamedParameter("value").toString();
+						: formatConcatPath(annotation.getNamedParameter("value").toString());
+				pathWasChanged = true;
 			}
 		}
 
 		if (!meth.isEmpty()) {
 			return new Pair<String, String>(path, meth);
-		} else { // TODO: check if there was @Path, if there was get subresource for methods.
-			return null;
+		} else if (pathWasChanged) {
+			// TODO find subresource (class that is returned by the method and is not
+			// annotated with @Path on classlevel) and get the methods there. Problem: could
+			// return Object -> any resource possible. would need to read code -> ?
 		}
+		return null;
+
 	}
 
 	private String extractHttpMethod(String annotationClass) {
@@ -138,10 +147,11 @@ public class JAXRSReader implements APIReader {
 				Document doc = builder.parse(webXmlPath.toFile());
 				NodeList urls = doc.getElementsByTagName("url-pattern");
 				if (urls != null && urls.getLength() != 0) {
-					basePath = urls.item(0).getNodeValue();
-					if (basePath.endsWith("*")) {
-						basePath = basePath.subSequence(0, basePath.length() - 2).toString();
+					basePath = urls.item(0).getTextContent();
+					if (basePath != null) {
+						basePath = formatBasePath(basePath);
 					}
+
 					return basePath;
 				}
 
@@ -159,6 +169,33 @@ public class JAXRSReader implements APIReader {
 		}
 
 		return null;
+	}
+
+	private String formatBasePath(String basePath) {
+		basePath = basePath.trim();
+		basePath = basePath.replace("\"", "");
+		if (basePath.endsWith("*")) {
+			basePath = basePath.substring(0, basePath.length() - 2);
+		}
+		if (!basePath.startsWith("/")) {
+			basePath = "/" + basePath;
+		}
+		if (basePath.endsWith("/")) {
+			basePath = basePath.substring(0, basePath.length() - 2);
+		}
+		return basePath;
+	}
+
+	private String formatConcatPath(String concatPath) {
+		concatPath = concatPath.trim();
+		concatPath = concatPath.replace("\"", "");
+		if (!concatPath.startsWith("/")) {
+			concatPath = "/" + concatPath;
+		}
+		if (concatPath.endsWith("/")) {
+			concatPath = concatPath.substring(0, concatPath.length() - 2);
+		}
+		return concatPath;
 	}
 
 }
