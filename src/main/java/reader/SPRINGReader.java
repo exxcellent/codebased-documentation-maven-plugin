@@ -61,10 +61,11 @@ public class SPRINGReader implements APIReader {
 			PatchMapping.class.getSimpleName());
 
 	private Log log;
+	private File apiConfigFile;
 
-	public SPRINGReader(Log log) {
+	public SPRINGReader(Log log, File apiConfigFile) {
 		this.log = log;
-		log.info(RequestMethod.class.getSimpleName() + "." + RequestMethod.GET.name());
+		this.apiConfigFile = apiConfigFile;
 	}
 
 	@Override

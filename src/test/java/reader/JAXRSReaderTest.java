@@ -37,7 +37,7 @@ public class JAXRSReaderTest {
 		
 		
 		File file = Paths.get("src/test/java/reader/testclass1").toFile();
-		JAXRSReader reader = new JAXRSReader(project, log);
+		JAXRSReader reader = new JAXRSReader(project, log, null);
 		List<Pair<String, String>> result = reader.getPathsAndMethods(file);
 		
 		List<Pair<String, String>> expected = new ArrayList<>();
@@ -62,7 +62,7 @@ public class JAXRSReaderTest {
 		
 		
 		File file = Paths.get("src/test/java/reader/testclass2").toFile();
-		JAXRSReader reader = new JAXRSReader(project, log);
+		JAXRSReader reader = new JAXRSReader(project, log, null);
 		List<Pair<String, String>> result = reader.getPathsAndMethods(file);
 		
 		List<Pair<String, String>> expected = new ArrayList<>();

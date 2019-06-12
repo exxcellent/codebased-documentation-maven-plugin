@@ -14,11 +14,13 @@ public class SwaggerReader implements APIReader {
 	private MavenProject project;
 	private Log log;
 	private List<String> swaggerFilePaths;
+	private File apiConfigFile;
 	
-	public SwaggerReader(MavenProject project, Log log, List<String> swaggerFilePaths) {
+	public SwaggerReader(MavenProject project, Log log, List<String> swaggerFilePaths, File apiConfigFile) {
 		this.project = project;
 		this.log = log;
 		this.swaggerFilePaths = swaggerFilePaths;
+		this.apiConfigFile = apiConfigFile;
 	}
 
 	@Override

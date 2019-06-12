@@ -44,10 +44,12 @@ public class JAXRSReader implements APIReader {
 
 	private MavenProject project;
 	private Log log;
+	private File apiConfigFile;
 
-	public JAXRSReader(MavenProject project, Log log) {
+	public JAXRSReader(MavenProject project, Log log, File apiConfigFile) {
 		this.project = project;
 		this.log = log;
+		this.apiConfigFile = apiConfigFile;
 	}
 
 	@Override
@@ -81,26 +83,20 @@ public class JAXRSReader implements APIReader {
 			applicationPath = readPathFromWebXML();
 		}
 
-		if (applicationPath != null) {
-			applicationPath = formatBasePath(applicationPath);
-			List<Pair<String, String>> returnPaths = new ArrayList<>();
-			for (Pair<String, String> currentPair : paths) {
-				Pair<String, String> longPathPair = new Pair<>(
-						applicationPath + formatConcatPath(currentPair.getLeft()), currentPair.getRight());
-				returnPaths.add(longPathPair);
-			}
-			return returnPaths;
-		} else {
-			List<Pair<String, String>> returnPaths = new ArrayList<>();
-			for (Pair<String, String> currentPair : paths) {
-				Pair<String, String> longPathPair = new Pair<>(formatBasePath(currentPair.getLeft()),
-						currentPair.getRight());
-				returnPaths.add(longPathPair);
-			}
-			return returnPaths;
-		}
+		return concatApplicationPathTo(paths, applicationPath);
 	}
 
+	/**
+	 * Iterates through the annotations on the given method. If there is a Http
+	 * method annotation, the pair containing the found mapping. If there is a Path
+	 * annotation to the http method, the path is concatenated to the given path
+	 * (from the path annotation on class level). Currently methods with only path
+	 * annotations are not supported and return null.
+	 * 
+	 * @param method    JavaMethod to be analyzed.
+	 * @param classPath path annotated on class level.
+	 * @return Pair containing path and method. Null, if there is no path/method.
+	 */
 	private Pair<String, String> getMethodAnnotations(JavaMethod method, String classPath) {
 		String path = formatConcatPath(classPath);
 		boolean pathWasChanged = false;
@@ -119,7 +115,7 @@ public class JAXRSReader implements APIReader {
 
 		if (!meth.isEmpty()) {
 			return new Pair<String, String>(path, meth);
-		} else if (pathWasChanged) {
+		} else if (pathWasChanged) { // && meth.isEmpty()
 			// TODO find subresource (class that is returned by the method and is not
 			// annotated with @Path on classlevel) and get the methods there. Problem: could
 			// return Object -> any resource possible. would need to read code -> ?
@@ -133,31 +129,91 @@ public class JAXRSReader implements APIReader {
 		return HTTP_METHOD_TYPE.get(index);
 	}
 
+	/**
+	 * Concatenates the given applicationPath to the paths of the given pairs. If
+	 * the application path is null, the given path of the pair is formatted as base
+	 * path.
+	 * 
+	 * @param paths           List of pairs. The applicationPath is to be added to
+	 *                        the left side of the pair.
+	 * @param applicationPath String containing the path given as path of the
+	 *                        application. Can be null.
+	 * @return List of pairs onto which the application path was concatenated.
+	 */
+	private List<Pair<String, String>> concatApplicationPathTo(List<Pair<String, String>> paths, String applicationPath) {
+		List<Pair<String, String>> returnPaths = new ArrayList<>();
+		if (applicationPath != null) {
+			applicationPath = formatBasePath(applicationPath);
+			for (Pair<String, String> currentPair : paths) {
+				Pair<String, String> longPathPair = new Pair<>(
+						applicationPath + formatConcatPath(currentPair.getLeft()), currentPair.getRight());
+				returnPaths.add(longPathPair);
+			}
+		} else {
+			for (Pair<String, String> currentPair : paths) {
+				Pair<String, String> longPathPair = new Pair<>(formatBasePath(currentPair.getLeft()),
+						currentPair.getRight());
+				returnPaths.add(longPathPair);
+			}
+		}
+		return returnPaths;
+	}
+
+	/**
+	 * Searches for the web.xml of the application. If there is one (either given
+	 * through plug-in parameter or in the resources of the project), the file is
+	 * parsed and the 'url-pattern' is read.
+	 * 
+	 * @return String containing the value of 'url-pattern', null if no web.xml was
+	 *         found or value couldn't be read.
+	 */
 	private String readPathFromWebXML() {
+		File configFile = null;
+		if (apiConfigFile != null) {
+			configFile = apiConfigFile;
+		} else {
+			try (Stream<java.nio.file.Path> fileStream = Files.walk(Paths.get(project.getBasedir().getAbsolutePath()),
+					4, FileVisitOption.FOLLOW_LINKS)) {
+				Optional<java.nio.file.Path> path = fileStream.filter(p -> p.endsWith("web.xml")).findFirst();
+				if (path.isPresent()) {
+					configFile = path.get().toFile();
+				} else {
+					log.info("No web.xml found.");
+					return null;
+				}
+			} catch (IOException e) {
+				log.error("Error searching for web.xml. " + e.getMessage());
+				return null;
+			}
+		}
+
+		return readUrlPattern(configFile);
+	}
+
+	/**
+	 * Searches for the url-pattern element in the given file. File should be xml.
+	 * 
+	 * @param xmlFile file being parsed.
+	 * @return the value found or null.
+	 */
+	private String readUrlPattern(File xmlFile) {
+		if (xmlFile == null) {
+			return null;
+		}
 		String basePath = "";
-
-		try (Stream<java.nio.file.Path> fileStream = Files.walk(Paths.get(project.getBasedir().getAbsolutePath()), 4,
-				FileVisitOption.FOLLOW_LINKS)) {
-			Optional<java.nio.file.Path> path = fileStream.filter(p -> p.endsWith("web.xml")).findFirst();
-			if (path.isPresent()) {
-				java.nio.file.Path webXmlPath = path.get();
-				DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-				DocumentBuilder builder = factory.newDocumentBuilder();
-
-				Document doc = builder.parse(webXmlPath.toFile());
-				NodeList urls = doc.getElementsByTagName("url-pattern");
-				if (urls != null && urls.getLength() != 0) {
-					basePath = urls.item(0).getTextContent();
-					if (basePath != null) {
-						basePath = formatBasePath(basePath);
-					}
-
-					return basePath;
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		DocumentBuilder builder;
+		try {
+			builder = factory.newDocumentBuilder();
+			Document doc = builder.parse(xmlFile);
+			NodeList urls = doc.getElementsByTagName("url-pattern");
+			if (urls != null && urls.getLength() != 0) {
+				basePath = urls.item(0).getTextContent();
+				if (basePath != null) {
+					basePath = formatBasePath(basePath);
 				}
 
-			} else {
-				log.info("No web.xml found.");
-				return null;
+				return basePath;
 			}
 		} catch (IOException e) {
 			log.error("Error searching for web.xml. " + e.getMessage());
@@ -167,10 +223,16 @@ public class JAXRSReader implements APIReader {
 			log.error("Error while parsing web.xml: " + e.getMessage());
 			e.printStackTrace();
 		}
-
 		return null;
 	}
 
+	/**
+	 * Formats the given String to /path by trimming, removing " and making sure,
+	 * that it starts with a slash and ends without a slash or star.
+	 * 
+	 * @param basePath path to be transformed.
+	 * @return transformed String
+	 */
 	private String formatBasePath(String basePath) {
 		basePath = basePath.trim();
 		basePath = basePath.replace("\"", "");
@@ -186,6 +248,13 @@ public class JAXRSReader implements APIReader {
 		return basePath;
 	}
 
+	/**
+	 * Formats the given String to /path by trimming, removing " and making sure,
+	 * that it starts with a slash and ends without a slash.
+	 * 
+	 * @param concatPathpath to be transformed.
+	 * @return transformed String
+	 */
 	private String formatConcatPath(String concatPath) {
 		concatPath = concatPath.trim();
 		concatPath = concatPath.replace("\"", "");

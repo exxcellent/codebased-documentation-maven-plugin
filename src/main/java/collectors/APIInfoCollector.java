@@ -1,5 +1,6 @@
 package collectors;
 
+import java.io.File;
 import java.nio.file.Paths;
 import java.util.List;
 
@@ -21,14 +22,16 @@ public class APIInfoCollector implements InformationCollector {
 	private Log log;
 	private AnnotationType type;
 	private List<String> swaggerFilePaths;
+	private File apiConfigFilePath;
 	
 	public static final String FILE_NAME = "apiInformation";
 	
-	public APIInfoCollector(MavenProject project, Log log, AnnotationType type, List<String> swaggerFilePaths) {
+	public APIInfoCollector(MavenProject project, Log log, AnnotationType type, List<String> swaggerFilePaths, File apiConfigFilePath) {
 		this.project = project;
 		this.log = log;
 		this.type = type;
 		this.swaggerFilePaths = swaggerFilePaths;
+		this.apiConfigFilePath = apiConfigFilePath;
 	}
 
 	@Override
@@ -42,12 +45,12 @@ public class APIInfoCollector implements InformationCollector {
 		APIReader apiReader;
 		switch (type) {
 		case JAXRS:
-			apiReader = new JAXRSReader(project, log);
+			apiReader = new JAXRSReader(project, log, apiConfigFilePath);
 			log.info("Using Jax-RS");
 			break;
 		case SWAGGER_FILE:
 			if (swaggerFilePaths != null && !swaggerFilePaths.isEmpty()) {
-				apiReader = new SwaggerReader(project, log, swaggerFilePaths);
+				apiReader = new SwaggerReader(project, log, swaggerFilePaths, apiConfigFilePath);
 				log.info("Using Swagger files");
 				break;
 			} else {
@@ -55,7 +58,7 @@ public class APIInfoCollector implements InformationCollector {
 				log.error("Continues by trying to find Spring Boot annotations.");
 			}
 		default: //SPRING
-			apiReader = new SPRINGReader(log);
+			apiReader = new SPRINGReader(log, apiConfigFilePath);
 			log.info("Using Spring Boot");
 		}
 		
