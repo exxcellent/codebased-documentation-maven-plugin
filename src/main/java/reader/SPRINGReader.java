@@ -23,6 +23,7 @@ import com.thoughtworks.qdox.model.JavaAnnotation;
 import com.thoughtworks.qdox.model.JavaClass;
 import com.thoughtworks.qdox.model.JavaMethod;
 
+import util.HttpMethods;
 import util.Pair;
 
 /**
@@ -69,17 +70,17 @@ public class SPRINGReader implements APIReader {
 	}
 
 	@Override
-	public List<Pair<String, String>> getPathsAndMethods(File src) {
+	public List<Pair<String, HttpMethods>> getPathsAndMethods(File src) {
 		JavaProjectBuilder builder = new JavaProjectBuilder();
 		builder.addSourceTree(src);
 
-		List<Pair<String, String>> paths = new ArrayList<>();
+		List<Pair<String, HttpMethods>> paths = new ArrayList<>();
 
 		for (JavaClass currentClass : builder.getClasses()) {
 
-			Pair<List<Pair<String, String>>, Boolean> mappingAndController = getBaseMappingAndController(currentClass);
+			Pair<List<Pair<String, HttpMethods>>, Boolean> mappingAndController = getBaseMappingAndController(currentClass);
 			boolean controller = mappingAndController.getRight();
-			List<Pair<String, String>> baseMapping = mappingAndController.getLeft();
+			List<Pair<String, HttpMethods>> baseMapping = mappingAndController.getLeft();
 
 			if (controller || baseMapping != null) {
 				for (JavaMethod method : currentClass.getMethods()) {
@@ -100,9 +101,9 @@ public class SPRINGReader implements APIReader {
 	 * @return Pair containing the found mapping or null and boolean whether the
 	 *         class is a controller class.
 	 */
-	private Pair<List<Pair<String, String>>, Boolean> getBaseMappingAndController(JavaClass clz) {
+	private Pair<List<Pair<String, HttpMethods>>, Boolean> getBaseMappingAndController(JavaClass clz) {
 		boolean controller = false;
-		List<Pair<String, String>> baseMapping = null;
+		List<Pair<String, HttpMethods>> baseMapping = null;
 		for (JavaAnnotation annotation : clz.getAnnotations()) {
 			String annotationClass = annotation.getType().getSimpleName();
 
@@ -113,7 +114,7 @@ public class SPRINGReader implements APIReader {
 				baseMapping = getMapping(annotation);
 			}
 		}
-		return new Pair<List<Pair<String, String>>, Boolean>(baseMapping, controller);
+		return new Pair<List<Pair<String, HttpMethods>>, Boolean>(baseMapping, controller);
 	}
 
 	/**
@@ -126,22 +127,22 @@ public class SPRINGReader implements APIReader {
 	 * @return List of found mappings. One Pair for each method available on the
 	 *         paths found.
 	 */
-	private List<Pair<String, String>> getMethodAnnotations(JavaMethod method,
-			List<Pair<String, String>> baseMappings) {
+	private List<Pair<String, HttpMethods>> getMethodAnnotations(JavaMethod method,
+			List<Pair<String, HttpMethods>> baseMappings) {
 
-		List<Pair<String, String>> pairList = new ArrayList<>();
+		List<Pair<String, HttpMethods>> pairList = new ArrayList<>();
 
 		for (JavaAnnotation annotation : method.getAnnotations()) {
 			String annotationClass = annotation.getType().getSimpleName();
 
 			if (annotationClass.equals(RequestMapping.class.getSimpleName())
 					|| HTTP_METHODS_MAPPING.contains(annotationClass)) {
-				List<Pair<String, String>> methodMapping = getMapping(annotation);
+				List<Pair<String, HttpMethods>> methodMapping = getMapping(annotation);
 
-				for (Pair<String, String> currentMapping : methodMapping) {
+				for (Pair<String, HttpMethods> currentMapping : methodMapping) {
 					if (currentMapping.getRight() != null && baseMappings != null) {
-						for (Pair<String, String> base : baseMappings) {
-							pairList.add(new Pair<String, String>(
+						for (Pair<String, HttpMethods> base : baseMappings) {
+							pairList.add(new Pair<String, HttpMethods>(
 									startWithEndsWithoutSlash(base.getLeft()) + startWithSlash(currentMapping.getLeft()),
 									currentMapping.getRight()));
 						}
@@ -149,22 +150,22 @@ public class SPRINGReader implements APIReader {
 						pairList.add(currentMapping);
 					} else {
 						if (baseMappings != null) {
-							for (Pair<String, String> base : baseMappings) {
+							for (Pair<String, HttpMethods> base : baseMappings) {
 								if (base.getRight() != null) {
-									pairList.add(new Pair<String, String>(
+									pairList.add(new Pair<String, HttpMethods>(
 											startWithEndsWithoutSlash(base.getLeft()) + startWithSlash(currentMapping.getLeft()),
 											base.getRight()));
-								} else {
-									for (String httpMethod : HTTP_METHOD_TYPE) {
-										pairList.add(new Pair<String, String>(
+								} else { //all methods are allowed.
+									for (HttpMethods httpMethod : HttpMethods.values()) {
+										pairList.add(new Pair<String, HttpMethods>(
 												startWithEndsWithoutSlash(base.getLeft()) + startWithSlash(currentMapping.getLeft()),
 												httpMethod));
 									}
 								}
 							}
 						} else {
-							for (String httpMethod : HTTP_METHOD_TYPE) {
-								pairList.add(new Pair<String, String>(startWithEndsWithoutSlash(currentMapping.getLeft()),
+							for (HttpMethods httpMethod : HttpMethods.values()) {
+								pairList.add(new Pair<String, HttpMethods>(startWithEndsWithoutSlash(currentMapping.getLeft()),
 										httpMethod));
 							}
 						}
@@ -184,18 +185,20 @@ public class SPRINGReader implements APIReader {
 	 * @param annotation JavaAnnotation to be evaluated.
 	 * @return List of found mappings.
 	 */
-	private List<Pair<String, String>> getMapping(JavaAnnotation annotation) {
-		List<Pair<String, String>> pairs = new ArrayList<>();
+	private List<Pair<String, HttpMethods>> getMapping(JavaAnnotation annotation) {
+		List<Pair<String, HttpMethods>> pairs = new ArrayList<>();
 
 		List<String> paths = new ArrayList<>();
-		List<String> methods = new ArrayList<>();
+		List<HttpMethods> methods = new ArrayList<>();
 
 		Object obj = annotation.getPropertyMap().get("value");
 		obj = (obj == null) ? null : annotation.getPropertyMap().get("value").getParameterValue();
 		if (obj instanceof String) {
 			paths.add(((String) obj).trim());
 		} else if (obj instanceof List) {
-			paths.addAll((List<String>) obj);
+			for (Object o : (List)obj) {
+				paths.add(o.toString());
+			}
 		} else {
 			if (obj == null) {
 				paths.add("");
@@ -211,13 +214,13 @@ public class SPRINGReader implements APIReader {
 				for (String meth : (List<String>) obj) {
 					if (HTTP_METHODS.contains(meth.toString())) {
 						int index = HTTP_METHODS.indexOf(meth.toString());
-						methods.add(HTTP_METHOD_TYPE.get(index));
+						methods.add(HttpMethods.values()[index]);
 					}
 				}
 			} else if (obj instanceof String) {
 				if (HTTP_METHODS.contains(obj.toString())) {
 					int index = HTTP_METHODS.indexOf(obj.toString());
-					methods.add(HTTP_METHOD_TYPE.get(index));
+					methods.add(HttpMethods.values()[index]);
 				}
 			} else {
 				if (obj == null)
@@ -225,22 +228,22 @@ public class SPRINGReader implements APIReader {
 
 				methods = null;
 			}
+			
 		} else {
 			int index = HTTP_METHODS_MAPPING.indexOf(annotation.getType().getSimpleName());
-			log.info(String.valueOf(index));
 			if (index != -1) {
-				methods.add(HTTP_METHOD_TYPE.get(index));
+				methods.add(HttpMethods.values()[index]);
 			}
 		}
 
 		for (String path : paths) {
 			path = path.replace("\"", "");
 			if (methods != null && !methods.isEmpty()) {
-				for (String method : methods) {
-					pairs.add(new Pair<String, String>(path, method));
+				for (HttpMethods method : methods) {
+					pairs.add(new Pair<String, HttpMethods>(path, method));
 				}
 			} else {
-				pairs.add(new Pair<String, String>(path, null));
+				pairs.add(new Pair<String, HttpMethods>(path, null));
 			}
 		}
 

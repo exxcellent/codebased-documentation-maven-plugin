@@ -7,6 +7,7 @@ import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.Xpp3Dom;
 
+import util.HttpMethods;
 import util.Pair;
 
 public class SwaggerReader implements APIReader {
@@ -24,7 +25,7 @@ public class SwaggerReader implements APIReader {
 	}
 
 	@Override
-	public List<Pair<String, String>> getPathsAndMethods(File src) {
+	public List<Pair<String, HttpMethods>> getPathsAndMethods(File src) {
 		// TODO Auto-generated method stub
 		return null;
 	}

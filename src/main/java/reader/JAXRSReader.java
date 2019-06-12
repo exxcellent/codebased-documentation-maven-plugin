@@ -34,6 +34,8 @@ import com.thoughtworks.qdox.model.JavaClass;
 import com.thoughtworks.qdox.model.JavaMethod;
 
 import java.util.Arrays;
+
+import util.HttpMethods;
 import util.Pair;
 
 public class JAXRSReader implements APIReader {
@@ -53,13 +55,13 @@ public class JAXRSReader implements APIReader {
 	}
 
 	@Override
-	public List<Pair<String, String>> getPathsAndMethods(File src) {
+	public List<Pair<String, HttpMethods>> getPathsAndMethods(File src) {
 
 		JavaProjectBuilder builder = new JavaProjectBuilder();
 		builder.addSourceTree(src);
 		String applicationPath = null;
 
-		List<Pair<String, String>> paths = new ArrayList<>();
+		List<Pair<String, HttpMethods>> mappings = new ArrayList<>();
 
 		for (JavaClass currentClass : builder.getClasses()) {
 			for (JavaAnnotation annotation : currentClass.getAnnotations()) {
@@ -70,9 +72,9 @@ public class JAXRSReader implements APIReader {
 							: annotation.getNamedParameter("value").toString();
 
 					for (JavaMethod method : currentClass.getMethods()) {
-						Pair<String, String> methodPair = getMethodAnnotations(method, classPath);
+						Pair<String, HttpMethods> methodPair = getMethodAnnotations(method, classPath);
 						if (methodPair != null) {
-							paths.add(methodPair);
+							mappings.add(methodPair);
 						}
 					}
 				}
@@ -83,7 +85,7 @@ public class JAXRSReader implements APIReader {
 			applicationPath = readPathFromWebXML();
 		}
 
-		return concatApplicationPathTo(paths, applicationPath);
+		return concatApplicationPathTo(mappings, applicationPath);
 	}
 
 	/**
@@ -97,10 +99,10 @@ public class JAXRSReader implements APIReader {
 	 * @param classPath path annotated on class level.
 	 * @return Pair containing path and method. Null, if there is no path/method.
 	 */
-	private Pair<String, String> getMethodAnnotations(JavaMethod method, String classPath) {
+	private Pair<String, HttpMethods> getMethodAnnotations(JavaMethod method, String classPath) {
 		String path = formatConcatPath(classPath);
 		boolean pathWasChanged = false;
-		String meth = "";
+		HttpMethods meth = null;
 		for (JavaAnnotation annotation : method.getAnnotations()) {
 			String annotationClass = annotation.getType().getSimpleName();
 
@@ -113,8 +115,8 @@ public class JAXRSReader implements APIReader {
 			}
 		}
 
-		if (!meth.isEmpty()) {
-			return new Pair<String, String>(path, meth);
+		if (meth != null) {
+			return new Pair<String, HttpMethods>(path, meth);
 		} else if (pathWasChanged) { // && meth.isEmpty()
 			// TODO find subresource (class that is returned by the method and is not
 			// annotated with @Path on classlevel) and get the methods there. Problem: could
@@ -124,9 +126,9 @@ public class JAXRSReader implements APIReader {
 
 	}
 
-	private String extractHttpMethod(String annotationClass) {
+	private HttpMethods extractHttpMethod(String annotationClass) {
 		int index = HTTP_METHODS.indexOf(annotationClass);
-		return HTTP_METHOD_TYPE.get(index);
+		return HttpMethods.values()[index]; //get(index);
 	}
 
 	/**
@@ -140,18 +142,18 @@ public class JAXRSReader implements APIReader {
 	 *                        application. Can be null.
 	 * @return List of pairs onto which the application path was concatenated.
 	 */
-	private List<Pair<String, String>> concatApplicationPathTo(List<Pair<String, String>> paths, String applicationPath) {
-		List<Pair<String, String>> returnPaths = new ArrayList<>();
+	private List<Pair<String, HttpMethods>> concatApplicationPathTo(List<Pair<String, HttpMethods>> paths, String applicationPath) {
+		List<Pair<String, HttpMethods>> returnPaths = new ArrayList<>();
 		if (applicationPath != null) {
 			applicationPath = formatBasePath(applicationPath);
-			for (Pair<String, String> currentPair : paths) {
-				Pair<String, String> longPathPair = new Pair<>(
+			for (Pair<String, HttpMethods> currentPair : paths) {
+				Pair<String, HttpMethods> longPathPair = new Pair<>(
 						applicationPath + formatConcatPath(currentPair.getLeft()), currentPair.getRight());
 				returnPaths.add(longPathPair);
 			}
 		} else {
-			for (Pair<String, String> currentPair : paths) {
-				Pair<String, String> longPathPair = new Pair<>(formatBasePath(currentPair.getLeft()),
+			for (Pair<String, HttpMethods> currentPair : paths) {
+				Pair<String, HttpMethods> longPathPair = new Pair<>(formatBasePath(currentPair.getLeft()),
 						currentPair.getRight());
 				returnPaths.add(longPathPair);
 			}

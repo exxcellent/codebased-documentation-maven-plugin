@@ -14,6 +14,7 @@ import reader.APIReader;
 import reader.JAXRSReader;
 import reader.SPRINGReader;
 import reader.SwaggerReader;
+import util.HttpMethods;
 import util.Pair;
 
 public class APIInfoCollector implements InformationCollector {
@@ -62,11 +63,11 @@ public class APIInfoCollector implements InformationCollector {
 			log.info("Using Spring Boot");
 		}
 		
-		List<Pair<String, String>> mappings = apiReader.getPathsAndMethods(project.getBasedir());
+		List<Pair<String, HttpMethods>> mappings = apiReader.getPathsAndMethods(project.getBasedir());
 		
 		APIInfoObject infoObject = new APIInfoObject(project.getExecutionProject().getName()); //TODO: NAME?!
-		for (Pair<String, String> mapping : mappings) {
-			infoObject.addMethod(mapping.getLeft(), mapping.getRight());
+		for (Pair<String, HttpMethods> mapping : mappings) {
+			infoObject.addMethod(mapping.getLeft(), mapping.getRight().name());
 		}
 		
 		FileWriter.writeInfoToJSONFile(dirPath, FILE_NAME, infoObject, log);
