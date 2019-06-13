@@ -9,6 +9,7 @@ import collectors.models.InfoObject;
 
 public class ModuleInfoObject extends InfoObject{
 	
+	private String moduleName;
 	private String artifactID;
 	private String groupID;
 	private String version;
@@ -18,7 +19,7 @@ public class ModuleInfoObject extends InfoObject{
 	private List<String> dependsOn;
 	
 	public ModuleInfoObject(String name, String artifactID, String groupId, String version, String tag, List<ProjectInfoObject> dependencies, List<String> dependsOn) {
-		super(name);
+		this.setModuleName(name);
 		this.artifactID = artifactID;
 		this.groupID = groupId;
 		this.version = version;
@@ -28,7 +29,7 @@ public class ModuleInfoObject extends InfoObject{
 	}
 
 	public ModuleInfoObject(MavenProject project, List<ProjectInfoObject> dependencies, List<String> dependsOn) {
-		super(project.getName());
+		this.setModuleName(project.getName());
 		this.artifactID = project.getArtifactId();
 		this.groupID = project.getGroupId();
 		this.version = project.getVersion();
@@ -97,6 +98,14 @@ public class ModuleInfoObject extends InfoObject{
 			this.dependsOn = new ArrayList<String>();
 		}
 		this.dependsOn.add(dependsOn);
+	}
+
+	public String getModuleName() {
+		return moduleName;
+	}
+
+	public void setModuleName(String moduleName) {
+		this.moduleName = moduleName;
 	}
 
 }

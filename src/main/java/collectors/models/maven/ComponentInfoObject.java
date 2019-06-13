@@ -7,10 +7,11 @@ import collectors.models.InfoObject;
 
 public class ComponentInfoObject extends InfoObject {
 	
+	private String moduleName;
 	private List<PackageInfoObject> components; 
 
 	public ComponentInfoObject(String name) {
-		super(name);
+		this.setModuleName(name);
 	}
 
 	public List<PackageInfoObject> getComponents() {
@@ -26,6 +27,14 @@ public class ComponentInfoObject extends InfoObject {
 			this.components = new ArrayList<>();
 		}
 		components.add(component);
+	}
+
+	public String getModuleName() {
+		return moduleName;
+	}
+
+	public void setModuleName(String moduleName) {
+		this.moduleName = moduleName;
 	}
 
 }

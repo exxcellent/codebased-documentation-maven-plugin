@@ -10,11 +10,12 @@ import collectors.models.InfoObject;
 
 public class APIInfoObject extends InfoObject {
 
+	private String microserviceName;
 	private String address;
 	private Map<String, Set<String>> pathToMethod;
 
 	public APIInfoObject(String name) {
-		super(name);
+		this.setMicroserviceName(name);
 		pathToMethod = new HashMap<>();
 	}
 
@@ -59,6 +60,14 @@ public class APIInfoObject extends InfoObject {
 			return;
 		}
 		pathToMethod.put(path, new HashSet<>());
+	}
+
+	public String getMicroserviceName() {
+		return microserviceName;
+	}
+
+	public void setMicroserviceName(String microserviceName) {
+		this.microserviceName = microserviceName;
 	}
 
 }

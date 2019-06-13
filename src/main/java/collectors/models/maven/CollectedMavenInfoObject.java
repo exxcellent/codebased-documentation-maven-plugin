@@ -8,6 +8,7 @@ import collectors.models.InfoObject;
 
 public class CollectedMavenInfoObject extends InfoObject{
 	
+	private String projectName;
 	private String tag;
 	private String system;
 	private String subsystem;
@@ -16,7 +17,7 @@ public class CollectedMavenInfoObject extends InfoObject{
 	private List<ComponentInfoObject> components;
 	
 	public CollectedMavenInfoObject(String projectName, String tag, String system, String subsystem) {
-		super(projectName);
+		this.setProjectName(projectName);
 		this.tag = tag;
 		this.system = system;
 		this.subsystem = subsystem;
@@ -75,6 +76,14 @@ public class CollectedMavenInfoObject extends InfoObject{
 
 	public void setSubsystem(String subsystem) {
 		this.subsystem = subsystem;
+	}
+
+	public String getProjectName() {
+		return projectName;
+	}
+
+	public void setProjectName(String projectName) {
+		this.projectName = projectName;
 	}
 
 }

@@ -9,6 +9,7 @@ import collectors.models.InfoObject;
 
 public class ProjectInfoObject extends InfoObject{
 
+	private String projectName;
 	private String groupId;
 	private String artifactId;
 	private String version;
@@ -17,11 +18,11 @@ public class ProjectInfoObject extends InfoObject{
 	private List<Exclusion> exclusions;
 	
 	public ProjectInfoObject(String name) {
-		super(name);
+		this.setProjectName(name);
 	}
 	
 	public ProjectInfoObject(String name, String groupId, String artifactId, String version, String type, String scope, List<Exclusion> exclusions) {
-		super(name);
+		this.setProjectName(name);
 		this.groupId = groupId;
 		this.artifactId = artifactId;
 		this.version = version;
@@ -31,7 +32,7 @@ public class ProjectInfoObject extends InfoObject{
 	}
 	
 	public ProjectInfoObject(Dependency dependency) {
-		super(dependency.getManagementKey());
+		this.setProjectName(dependency.getManagementKey());
 		this.groupId = dependency.getGroupId();
 		this.artifactId = dependency.getArtifactId();
 		this.version = dependency.getVersion();
@@ -86,6 +87,14 @@ public class ProjectInfoObject extends InfoObject{
 
 	public void setExclusions(List<Exclusion> exclusions) {
 		this.exclusions = exclusions;
+	}
+
+	public String getProjectName() {
+		return projectName;
+	}
+
+	public void setProjectName(String projectName) {
+		this.projectName = projectName;
 	}
 
 }
