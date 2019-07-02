@@ -1,9 +1,16 @@
-package reader;
+package reader.impl.api;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Properties;
+
+import javax.ws.rs.PathParam;
 
 import org.apache.maven.plugin.logging.Log;
 import org.springframework.stereotype.Component;
@@ -12,17 +19,21 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
+import org.yaml.snakeyaml.Yaml;
 
 import com.thoughtworks.qdox.JavaProjectBuilder;
 import com.thoughtworks.qdox.model.JavaAnnotation;
 import com.thoughtworks.qdox.model.JavaClass;
 import com.thoughtworks.qdox.model.JavaMethod;
+import com.thoughtworks.qdox.model.JavaParameter;
 
+import reader.interfaces.APIReader;
 import util.HttpMethods;
 import util.Pair;
 
@@ -37,11 +48,9 @@ import util.Pair;
  */
 public class SPRINGReader implements APIReader {
 
-	private static final List<String> CONTROLLER_ANNOTATIONS = Arrays.asList(
-			Controller.class.getSimpleName(),
-			RestController.class.getSimpleName(), 
-			Component.class.getSimpleName(), 
-			Service.class.getSimpleName());
+	private static final List<String> CONTROLLER_ANNOTATIONS = Arrays.asList(Controller.class.getCanonicalName(),
+			RestController.class.getCanonicalName(), Component.class.getCanonicalName(),
+			Service.class.getCanonicalName());
 
 	private static final List<String> HTTP_METHODS = Arrays.asList(
 			RequestMethod.class.getSimpleName() + "." + RequestMethod.GET.name(),
@@ -52,25 +61,29 @@ public class SPRINGReader implements APIReader {
 			RequestMethod.class.getSimpleName() + "." + RequestMethod.OPTIONS.name(),
 			RequestMethod.class.getSimpleName() + "." + RequestMethod.PATCH.name());
 
-	private static final List<String> HTTP_METHODS_MAPPING = Arrays.asList(
-			GetMapping.class.getSimpleName(),
-			PutMapping.class.getSimpleName(), 
-			PostMapping.class.getSimpleName(), 
-			DeleteMapping.class.getSimpleName(),
-			null, 
-			"", 
-			PatchMapping.class.getSimpleName());
+	private static final List<String> HTTP_METHODS_MAPPING = Arrays.asList(GetMapping.class.getCanonicalName(),
+			PutMapping.class.getCanonicalName(), PostMapping.class.getCanonicalName(),
+			DeleteMapping.class.getCanonicalName(), null, "", PatchMapping.class.getCanonicalName());
 
 	private Log log;
 	private File apiConfigFile;
+	private String contextPath;
 
-	public SPRINGReader(Log log, File apiConfigFile) {
+	public SPRINGReader(Log log, File apiConfigFile, String contextPath) {
 		this.log = log;
 		this.apiConfigFile = apiConfigFile;
+		this.contextPath = contextPath;
 	}
 
 	@Override
 	public List<Pair<String, HttpMethods>> getPathsAndMethods(File src) {
+		String basePath;
+		if (contextPath != null) {
+			basePath = contextPath;
+		} else {
+			basePath = getApplicationPath();
+		}
+
 		JavaProjectBuilder builder = new JavaProjectBuilder();
 		builder.addSourceTree(src);
 
@@ -78,11 +91,13 @@ public class SPRINGReader implements APIReader {
 
 		for (JavaClass currentClass : builder.getClasses()) {
 
-			Pair<List<Pair<String, HttpMethods>>, Boolean> mappingAndController = getBaseMappingAndController(currentClass);
+			Pair<List<Pair<String, HttpMethods>>, Boolean> mappingAndController = getBaseMappingAndController(
+					currentClass);
 			boolean controller = mappingAndController.getRight();
 			List<Pair<String, HttpMethods>> baseMapping = mappingAndController.getLeft();
 
-			if (controller || baseMapping != null) {
+			if (controller || baseMapping != null) { // there was a mapping annotation or the class is a controller.
+				baseMapping = addContextPathToBaseMapping(basePath, baseMapping);
 				for (JavaMethod method : currentClass.getMethods()) {
 					paths.addAll(getMethodAnnotations(method, baseMapping));
 				}
@@ -105,16 +120,35 @@ public class SPRINGReader implements APIReader {
 		boolean controller = false;
 		List<Pair<String, HttpMethods>> baseMapping = null;
 		for (JavaAnnotation annotation : clz.getAnnotations()) {
-			String annotationClass = annotation.getType().getSimpleName();
+			String annotationClass = annotation.getType().getCanonicalName();
 
 			if (CONTROLLER_ANNOTATIONS.contains(annotationClass)) {
 				controller = true;
-			} else if (annotationClass.equals(RequestMapping.class.getSimpleName())
+			} else if (annotationClass.equals(RequestMapping.class.getCanonicalName())
 					|| HTTP_METHODS_MAPPING.contains(annotationClass)) {
 				baseMapping = getMapping(annotation);
 			}
 		}
 		return new Pair<List<Pair<String, HttpMethods>>, Boolean>(baseMapping, controller);
+	}
+
+	private List<Pair<String, HttpMethods>> addContextPathToBaseMapping(String contextPath,
+			List<Pair<String, HttpMethods>> baseMappings) {
+		if (contextPath == null || contextPath.isEmpty()) {
+			return baseMappings;
+		}
+		String path = startWithSlash(contextPath);
+		List<Pair<String, HttpMethods>> mappings = new ArrayList<>();
+		if (baseMappings == null) {
+			Pair<String, HttpMethods> newPair = new Pair<>(path, null);
+			mappings.add(newPair);
+			return mappings;
+		}
+		for (Pair<String, HttpMethods> currentPair : baseMappings) {
+			Pair<String, HttpMethods> newPair = new Pair<>(path + currentPair.getLeft(), currentPair.getRight());
+			mappings.add(newPair);
+		}
+		return mappings;
 	}
 
 	/**
@@ -133,40 +167,44 @@ public class SPRINGReader implements APIReader {
 		List<Pair<String, HttpMethods>> pairList = new ArrayList<>();
 
 		for (JavaAnnotation annotation : method.getAnnotations()) {
-			String annotationClass = annotation.getType().getSimpleName();
+			String annotationClass = annotation.getType().getCanonicalName();
 
-			if (annotationClass.equals(RequestMapping.class.getSimpleName())
+			if (annotationClass.equals(RequestMapping.class.getCanonicalName())
 					|| HTTP_METHODS_MAPPING.contains(annotationClass)) {
 				List<Pair<String, HttpMethods>> methodMapping = getMapping(annotation);
 
 				for (Pair<String, HttpMethods> currentMapping : methodMapping) {
 					if (currentMapping.getRight() != null && baseMappings != null) {
 						for (Pair<String, HttpMethods> base : baseMappings) {
-							pairList.add(new Pair<String, HttpMethods>(
-									startWithEndsWithoutSlash(base.getLeft()) + startWithSlash(currentMapping.getLeft()),
-									currentMapping.getRight()));
+							String path = startWithEndsWithoutSlash(base.getLeft())
+									+ startWithSlash(currentMapping.getLeft());
+							path = setTypeInPath(method, path);
+							pairList.add(new Pair<String, HttpMethods>(path, currentMapping.getRight()));
 						}
 					} else if (currentMapping.getRight() != null) {
-						pairList.add(currentMapping);
+						String path = setTypeInPath(method, currentMapping.getLeft());
+						pairList.add(new Pair<String, HttpMethods>(path, currentMapping.getRight()));
 					} else {
 						if (baseMappings != null) {
 							for (Pair<String, HttpMethods> base : baseMappings) {
 								if (base.getRight() != null) {
-									pairList.add(new Pair<String, HttpMethods>(
-											startWithEndsWithoutSlash(base.getLeft()) + startWithSlash(currentMapping.getLeft()),
-											base.getRight()));
-								} else { //all methods are allowed.
+									String path = startWithEndsWithoutSlash(base.getLeft())
+											+ startWithSlash(currentMapping.getLeft());
+									path = setTypeInPath(method, path);
+									pairList.add(new Pair<String, HttpMethods>(path, base.getRight()));
+								} else { // all methods are allowed.
 									for (HttpMethods httpMethod : HttpMethods.values()) {
-										pairList.add(new Pair<String, HttpMethods>(
-												startWithEndsWithoutSlash(base.getLeft()) + startWithSlash(currentMapping.getLeft()),
-												httpMethod));
+										String path = startWithEndsWithoutSlash(base.getLeft())
+												+ startWithSlash(currentMapping.getLeft());
+										path = setTypeInPath(method, path);
+										pairList.add(new Pair<String, HttpMethods>(path, httpMethod));
 									}
 								}
 							}
 						} else {
 							for (HttpMethods httpMethod : HttpMethods.values()) {
-								pairList.add(new Pair<String, HttpMethods>(startWithEndsWithoutSlash(currentMapping.getLeft()),
-										httpMethod));
+								pairList.add(new Pair<String, HttpMethods>(
+										setTypeInPath(method, startWithEndsWithoutSlash(currentMapping.getLeft())), httpMethod));
 							}
 						}
 					}
@@ -175,6 +213,27 @@ public class SPRINGReader implements APIReader {
 		}
 
 		return pairList;
+	}
+
+	private String setTypeInPath(JavaMethod method, String path) {
+		String newPath = path;
+		for (JavaParameter param : method.getParameters()) {
+			for (JavaAnnotation annotation : param.getAnnotations()) {
+				if (annotation.getType().getCanonicalName().equalsIgnoreCase(PathVariable.class.getCanonicalName())) {
+					Object name = annotation.getNamedParameter("value");
+					if (name == null) {
+						name = annotation.getNamedParameter("name") == null ? param.getName()
+								: annotation.getNamedParameter("name");
+					}
+					String paramName = name.toString().replaceAll("\"", "");
+					if (path.contains("{" + paramName + "}")) {
+						newPath = path.replace("{" + paramName + "}", "{" + param.getJavaClass().getSimpleName().toUpperCase(Locale.ROOT) + "}");
+					}
+				}
+			}
+		}
+
+		return newPath;
 	}
 
 	/**
@@ -196,7 +255,7 @@ public class SPRINGReader implements APIReader {
 		if (obj instanceof String) {
 			paths.add(((String) obj).trim());
 		} else if (obj instanceof List) {
-			for (Object o : (List)obj) {
+			for (Object o : (List) obj) {
 				paths.add(o.toString());
 			}
 		} else {
@@ -207,7 +266,7 @@ public class SPRINGReader implements APIReader {
 			}
 		}
 
-		if (annotation.getType().getSimpleName().contentEquals(RequestMapping.class.getSimpleName())) {
+		if (annotation.getType().getCanonicalName().contentEquals(RequestMapping.class.getCanonicalName())) {
 			obj = annotation.getNamedParameter("method");
 
 			if (obj instanceof List) {
@@ -223,14 +282,11 @@ public class SPRINGReader implements APIReader {
 					methods.add(HttpMethods.values()[index]);
 				}
 			} else {
-				if (obj == null)
-					log.info("Method was null");
-
 				methods = null;
 			}
-			
+
 		} else {
-			int index = HTTP_METHODS_MAPPING.indexOf(annotation.getType().getSimpleName());
+			int index = HTTP_METHODS_MAPPING.indexOf(annotation.getType().getCanonicalName());
 			if (index != -1) {
 				methods.add(HttpMethods.values()[index]);
 			}
@@ -279,7 +335,40 @@ public class SPRINGReader implements APIReader {
 			uri = uri.substring(0, uri.length() - 2);
 		}
 		return uri;
-		
+
+	}
+
+	private String getApplicationPath() {
+		if (apiConfigFile == null || !apiConfigFile.exists()) {
+			return "";
+		}
+
+		String fileType = "";
+		if (apiConfigFile.isFile()) {
+			String[] fileName = apiConfigFile.getName().split(".");
+			fileType = fileName[fileName.length - 1];
+		}
+
+		ClassLoader loader = this.getClass().getClassLoader();
+		try (InputStream stream = loader.getResourceAsStream(apiConfigFile.getAbsolutePath())) {
+			if (fileType.equalsIgnoreCase("properties")) {
+				Properties props = new Properties();
+				props.load(stream);
+				String value = props.getProperty("server.servlet.context-path");
+				return value == null ? "" : value;
+			} else if (fileType.equalsIgnoreCase("yml")) {
+				Yaml yaml = new Yaml();
+				Map<String, Object> obj = yaml.load(stream);
+				Object value = obj.get("server.servlet.context-path");
+				return value == null ? "" : value.toString();
+			}
+		} catch (IOException e) {
+			log.error("Error reading property in file: " + apiConfigFile.getAbsolutePath());
+			log.error(e.getMessage());
+			return "";
+		}
+
+		return "";
 	}
 
 }

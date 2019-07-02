@@ -1,4 +1,4 @@
-package reader;
+package reader.interfaces;
 
 import java.io.File;
 import java.util.Arrays;

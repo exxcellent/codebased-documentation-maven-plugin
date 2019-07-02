@@ -63,6 +63,9 @@ public class DocumentationMojo extends AbstractMojo {
 
 	@Parameter(property = "apiConfigFilePath")
 	private File apiConfigFilePath;
+	
+	@Parameter(property = "contextPath")
+	private String contextPath;
 
 	public static final String MAVEN_AGGREGATE_NAME = "mavenInfo";
 	public static final String API_AGGREGATE_NAME = "apiInfo";
@@ -79,7 +82,7 @@ public class DocumentationMojo extends AbstractMojo {
 					project, getLog());
 			packageInfoCollector.collectInfo();
 			
-			APIInfoCollector apiInfoCollector = new APIInfoCollector(project, getLog(), annotationType, swaggerFilePaths, apiConfigFilePath);
+			APIInfoCollector apiInfoCollector = new APIInfoCollector(project, getLog(), annotationType, swaggerFilePaths, apiConfigFilePath, contextPath);
 			apiInfoCollector.collectInfo();
 		} else {
 			getLog().info("Skipping data collection: pom");
@@ -94,7 +97,7 @@ public class DocumentationMojo extends AbstractMojo {
 			setDocumentLocation();
 			FileAggregator aggregator = new FileAggregator(session, getLog());
 			aggregator.aggregateMavenFilesTo(documentLocation, SUFFIX);
-			
+			aggregator.aggregateAPIFilesTo(documentLocation, SUFFIX);			
 		}
 
 	}

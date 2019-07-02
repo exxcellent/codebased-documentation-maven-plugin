@@ -1,4 +1,4 @@
-package reader;
+package reader.impl.api;
 
 import java.io.File;
 import java.io.IOException;
@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -18,6 +19,7 @@ import javax.ws.rs.OPTIONS;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -25,6 +27,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
 import org.w3c.dom.Document;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
@@ -32,6 +35,9 @@ import com.thoughtworks.qdox.JavaProjectBuilder;
 import com.thoughtworks.qdox.model.JavaAnnotation;
 import com.thoughtworks.qdox.model.JavaClass;
 import com.thoughtworks.qdox.model.JavaMethod;
+import com.thoughtworks.qdox.model.JavaParameter;
+
+import reader.interfaces.APIReader;
 
 import java.util.Arrays;
 
@@ -40,18 +46,20 @@ import util.Pair;
 
 public class JAXRSReader implements APIReader {
 
-	private static final List<String> HTTP_METHODS = Arrays.asList(GET.class.getSimpleName(), PUT.class.getSimpleName(),
-			POST.class.getSimpleName(), DELETE.class.getSimpleName(), HEAD.class.getSimpleName(),
-			OPTIONS.class.getSimpleName());
+	private static final List<String> HTTP_METHODS = Arrays.asList(GET.class.getCanonicalName(),
+			PUT.class.getCanonicalName(), POST.class.getCanonicalName(), DELETE.class.getCanonicalName(),
+			HEAD.class.getCanonicalName(), OPTIONS.class.getCanonicalName());
 
 	private MavenProject project;
 	private Log log;
 	private File apiConfigFile;
+	private String contextPath;
 
-	public JAXRSReader(MavenProject project, Log log, File apiConfigFile) {
+	public JAXRSReader(MavenProject project, Log log, File apiConfigFile, String contextPath) {
 		this.project = project;
 		this.log = log;
 		this.apiConfigFile = apiConfigFile;
+		this.contextPath = contextPath;
 	}
 
 	@Override
@@ -59,15 +67,16 @@ public class JAXRSReader implements APIReader {
 
 		JavaProjectBuilder builder = new JavaProjectBuilder();
 		builder.addSourceTree(src);
-		String applicationPath = null;
+		String applicationPath = readPathFromWebXML();
 
 		List<Pair<String, HttpMethods>> mappings = new ArrayList<>();
 
 		for (JavaClass currentClass : builder.getClasses()) {
 			for (JavaAnnotation annotation : currentClass.getAnnotations()) {
-				if (annotation.getType().getSimpleName().equals(ApplicationPath.class.getSimpleName())) {
+				if (applicationPath == null
+						&& annotation.getType().getCanonicalName().equals(ApplicationPath.class.getCanonicalName())) {
 					applicationPath = annotation.getNamedParameter("value").toString();
-				} else if (annotation.getType().getSimpleName().equals(Path.class.getSimpleName())) {
+				} else if (annotation.getType().getCanonicalName().equals(Path.class.getCanonicalName())) {
 					String classPath = annotation.getNamedParameter("value") == null ? ""
 							: annotation.getNamedParameter("value").toString();
 
@@ -76,13 +85,19 @@ public class JAXRSReader implements APIReader {
 						if (methodPair != null) {
 							mappings.add(methodPair);
 						}
+						
 					}
 				}
 			}
 		}
 
-		if (applicationPath == null) {
-			applicationPath = readPathFromWebXML();
+		if (contextPath != null) {
+			applicationPath = formatBasePath(contextPath)
+					+ (applicationPath == null ? "" : formatConcatPath(applicationPath));
+		}
+		String glassfishPath = readPathFromGlassfishWebXML();
+		if (glassfishPath != null) {
+			applicationPath = formatBasePath(glassfishPath) + formatConcatPath(applicationPath);
 		}
 
 		return concatApplicationPathTo(mappings, applicationPath);
@@ -104,13 +119,14 @@ public class JAXRSReader implements APIReader {
 		boolean pathWasChanged = false;
 		HttpMethods meth = null;
 		for (JavaAnnotation annotation : method.getAnnotations()) {
-			String annotationClass = annotation.getType().getSimpleName();
+			String annotationClass = annotation.getType().getCanonicalName();
 
 			if (HTTP_METHODS.contains(annotationClass)) {
 				meth = extractHttpMethod(annotationClass);
-			} else if (annotationClass.equals(Path.class.getSimpleName())) {
+			} else if (annotationClass.equals(Path.class.getCanonicalName())) {
 				path += annotation.getNamedParameter("value") == null ? ""
 						: formatConcatPath(annotation.getNamedParameter("value").toString());
+				path = setTypeInPath(method, path);
 				pathWasChanged = true;
 			}
 		}
@@ -125,10 +141,26 @@ public class JAXRSReader implements APIReader {
 		return null;
 
 	}
+	
+	private String setTypeInPath(JavaMethod method, String path) {
+		String newPath = path;
+		for (JavaParameter param : method.getParameters()) {
+			for (JavaAnnotation annotation : param.getAnnotations()) {		
+				if (annotation.getType().getCanonicalName().equalsIgnoreCase(PathParam.class.getCanonicalName())) {
+					String paramName = annotation.getNamedParameter("value") == null ? param.getName() : annotation.getNamedParameter("value").toString();
+					paramName = paramName.replaceAll("\"", "");
+					if (path.contains("{" + paramName + "}")) {
+						newPath = path.replace("{" + paramName + "}", "{" + param.getJavaClass().getSimpleName().toUpperCase(Locale.ROOT) + "}");
+					} 
+				}
+			}
+		}
+		return newPath;
+	}
 
 	private HttpMethods extractHttpMethod(String annotationClass) {
 		int index = HTTP_METHODS.indexOf(annotationClass);
-		return HttpMethods.values()[index]; //get(index);
+		return HttpMethods.values()[index]; // get(index);
 	}
 
 	/**
@@ -142,7 +174,8 @@ public class JAXRSReader implements APIReader {
 	 *                        application. Can be null.
 	 * @return List of pairs onto which the application path was concatenated.
 	 */
-	private List<Pair<String, HttpMethods>> concatApplicationPathTo(List<Pair<String, HttpMethods>> paths, String applicationPath) {
+	private List<Pair<String, HttpMethods>> concatApplicationPathTo(List<Pair<String, HttpMethods>> paths,
+			String applicationPath) {
 		List<Pair<String, HttpMethods>> returnPaths = new ArrayList<>();
 		if (applicationPath != null) {
 			applicationPath = formatBasePath(applicationPath);
@@ -174,22 +207,54 @@ public class JAXRSReader implements APIReader {
 		if (apiConfigFile != null) {
 			configFile = apiConfigFile;
 		} else {
-			try (Stream<java.nio.file.Path> fileStream = Files.walk(Paths.get(project.getBasedir().getAbsolutePath()),
-					4, FileVisitOption.FOLLOW_LINKS)) {
-				Optional<java.nio.file.Path> path = fileStream.filter(p -> p.endsWith("web.xml")).findFirst();
+			;
+			try (Stream<java.nio.file.Path> fileStream = Files.find(Paths.get(project.getBasedir().getAbsolutePath()),
+					6, (p, a) -> p.endsWith("web.xml") && a.isRegularFile())) {
+				Optional<java.nio.file.Path> path = fileStream.findFirst();
 				if (path.isPresent()) {
 					configFile = path.get().toFile();
 				} else {
 					log.info("No web.xml found.");
 					return null;
 				}
+				fileStream.close();
 			} catch (IOException e) {
 				log.error("Error searching for web.xml. " + e.getMessage());
 				return null;
 			}
 		}
 
-		return readUrlPattern(configFile);
+		return readUrlPattern(configFile, "url-pattern", "servlet-mapping");
+	}
+
+	/**
+	 * Searches for the glassfish-web.xml of the application. If there is one
+	 * (either given through plug-in parameter or in the resources of the project),
+	 * the file is parsed and the 'url-pattern' is read.
+	 * 
+	 * @return String containing the value of 'url-pattern', null if no
+	 *         glassfish-web.xml was found or value couldn't be read.
+	 */
+	private String readPathFromGlassfishWebXML() {
+		File configFile = null;
+		try (Stream<java.nio.file.Path> fileStream = Files.find(Paths.get(project.getBasedir().getAbsolutePath()), 6,
+				(p, a) -> p.endsWith("glassfish-web.xml") && a.isRegularFile())) {
+
+			Optional<java.nio.file.Path> path = fileStream.findFirst();
+			if (path.isPresent()) {
+				configFile = path.get().toFile();
+			} else {
+				log.info("No glassfish-web.xml found.");
+				System.out.println(Paths.get(project.getBasedir().getAbsolutePath()).toString());
+				return null;
+			}
+			fileStream.close();
+		} catch (IOException e) {
+			log.error("Error searching for glassfish-web.xml. " + e.getMessage());
+			return null;
+		}
+
+		return readUrlPattern(configFile, "context-root", "glassfish-web-app");
 	}
 
 	/**
@@ -198,27 +263,33 @@ public class JAXRSReader implements APIReader {
 	 * @param xmlFile file being parsed.
 	 * @return the value found or null.
 	 */
-	private String readUrlPattern(File xmlFile) {
+	private String readUrlPattern(File xmlFile, String tagName, String parentName) {
 		if (xmlFile == null) {
 			return null;
 		}
 		String basePath = "";
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		try {
+			factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+		} catch (ParserConfigurationException e1) {
+			factory.setValidating(false);
+			System.err.println("Could not stop external dtd loading");
+		}
 		DocumentBuilder builder;
 		try {
 			builder = factory.newDocumentBuilder();
 			Document doc = builder.parse(xmlFile);
-			NodeList urls = doc.getElementsByTagName("url-pattern");
-			if (urls != null && urls.getLength() != 0) {
-				basePath = urls.item(0).getTextContent();
-				if (basePath != null) {
-					basePath = formatBasePath(basePath);
-				}
+			NodeList urls = doc.getElementsByTagName(tagName);
 
-				return basePath;
+			for (int i = 0; i < urls.getLength(); i++) {
+				if (urls.item(i).getParentNode().getNodeName().equals(parentName)) {
+					basePath = urls.item(i).getTextContent();
+					return basePath;
+				}
 			}
+
 		} catch (IOException e) {
-			log.error("Error searching for web.xml. " + e.getMessage());
+			log.error("Error reading file." + e.getMessage());
 		} catch (ParserConfigurationException e) {
 			log.error("Parser error while reading web.xml: " + e.getMessage());
 		} catch (SAXException e) {

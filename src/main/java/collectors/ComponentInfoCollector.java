@@ -74,14 +74,6 @@ public class ComponentInfoCollector implements InformationCollector {
 				collectBySourceAdd(name, dir, name, 0, builder, packageDependencies);
 			}
 		}
-
-//		log.info("-----------------------------------------------");
-//		for (Entry<String, Set<String>> entry : packageDependencies.entrySet()) {
-//			log.info(entry.getKey());
-//			for (String pkg : entry.getValue()) {
-//				log.info("  -" + pkg);
-//			}
-//		}
 		
 		String dirPath = Paths.get(project.getBasedir().getAbsolutePath(), "target", FOLDER_NAME).toString();
 		log.info("target file: " + FILE_NAME);

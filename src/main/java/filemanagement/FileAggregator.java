@@ -30,8 +30,11 @@ import collectors.models.InfoObject;
 import collectors.models.maven.CollectedMavenInfoObject;
 import collectors.models.maven.ComponentInfoObject;
 import collectors.models.maven.ModuleInfoObject;
+import collectors.models.restapi.APIConsumptionInfoObject;
 import collectors.models.restapi.APIInfoObject;
+import collectors.models.restapi.CollectedAPIInfoObject;
 import mojos.DocumentationMojo;
+import util.ConsumeDescriptionTriple;
 
 /**
  * Class for gathering and combining information files.
@@ -82,25 +85,48 @@ public class FileAggregator {
 		mavenCollection.setModules(mavenJsonObjects);
 		mavenCollection.setModuleDependencies(moduleDependencies);
 		mavenCollection.setComponents(packageJsonObjects);
+		log.info("    - WRITE - ");
 		FileWriter.writeInfoToJSONFile(folderPath.getAbsolutePath(),
 				DocumentationMojo.MAVEN_AGGREGATE_NAME + fileNameSuffix, mavenCollection, log);
+		log.info("completed aggregating maven info");
 
 	}
-	
+
 	public void aggregateAPIFilesTo(File folderPath, String fileNameSuffix) {
-		log.info("    - REST Interface File - ");
+		log.info("    - REST OFFER FILE - ");
 		List<File> interfaceInfoFiles = findFiles(APIInfoCollector.FOLDER_NAME, APIInfoCollector.FILE_NAME);
 		List<APIInfoObject> apiInfoObjects = createJSONObjects(interfaceInfoFiles, APIInfoObject.class);
-		
-		APIInfoObject apiInfoObject = new APIInfoObject(findProjectName()); //TODO: name??
-		for(APIInfoObject info : apiInfoObjects) {
+
+		/* merge APIINfoObjects */
+		APIInfoObject apiInfoObject = new APIInfoObject(findProjectName()); // TODO: name??
+		for (APIInfoObject info : apiInfoObjects) {
 			for (Entry<String, Set<String>> entry : info.getPathToMethod().entrySet()) {
 				apiInfoObject.addMethod(entry.getKey(), entry.getValue());
 			}
 		}
-		
+
+		log.info("    - REST CONSUME FILE - ");
+		/* get APIConsumptionInfoObjects */
 		log.info("    - AGGREGATE - ");
-		FileWriter.writeInfoToJSONFile(folderPath.getAbsolutePath(), DocumentationMojo.API_AGGREGATE_NAME, apiInfoObject, log);
+		List<File> consumeInfoFiles = findFiles(APIInfoCollector.FOLDER_NAME, APIInfoCollector.FILE_NAME_CONSUME);
+		List<APIConsumptionInfoObject> apiConsumeInfoObjects = createJSONObjects(consumeInfoFiles,
+				APIConsumptionInfoObject.class);
+
+		CollectedAPIInfoObject collectedInfo = new CollectedAPIInfoObject(apiInfoObject.getMicroserviceName());
+		collectedInfo.setProvide(apiInfoObject);
+
+		for (APIConsumptionInfoObject consumption : apiConsumeInfoObjects) {
+			System.out.println(consumption.getMicroserviceName());
+			for (ConsumeDescriptionTriple desc : consumption.getConsumes()) {
+				System.out.println("   - " + desc.getServiceName() + " - " + desc.getPath());
+			}
+				collectedInfo.addConsumeDescriptionTriples(consumption.getConsumes());
+		}
+
+		log.info("    - WRITE - ");
+		FileWriter.writeInfoToJSONFile(folderPath.getAbsolutePath(),
+				DocumentationMojo.API_AGGREGATE_NAME + fileNameSuffix, collectedInfo, log);
+		log.info("completed aggregating rest api info");
 	}
 
 	/**
@@ -126,13 +152,13 @@ public class FileAggregator {
 				root = prj;
 			}
 		}
-		String system =  extractFromConfigurationDOM(root.getPlugin("codebased-documentation:cd-maven-plugin").getConfiguration(),
-				"system");
-		
+		String system = extractFromConfigurationDOM(
+				root.getPlugin("codebased-documentation:cd-maven-plugin").getConfiguration(), "system");
+
 		if (system == null) {
 			system = "default_system";
 		}
-		
+
 		return system;
 	}
 
@@ -143,13 +169,13 @@ public class FileAggregator {
 				root = prj;
 			}
 		}
-		String subsystem = extractFromConfigurationDOM(root.getPlugin("codebased-documentation:cd-maven-plugin").getConfiguration(),
-				"subsystem");
-		
+		String subsystem = extractFromConfigurationDOM(
+				root.getPlugin("codebased-documentation:cd-maven-plugin").getConfiguration(), "subsystem");
+
 		if (subsystem == null) {
 			subsystem = "default_subsystem";
 		}
-		
+
 		return subsystem;
 	}
 
@@ -216,7 +242,7 @@ public class FileAggregator {
 	 * Tries to read the given parameter in the given object. If the object is not a
 	 * Xpp3Dom object or the parameter doesn't exist, returns null.
 	 * 
-	 * @param domObject object in which the parameter is searched for.
+	 * @param domObject     object in which the parameter is searched for.
 	 * @param parameterName name of the parameter
 	 * @return value of the parameter or null, if object doesn't exist.
 	 */

@@ -11,20 +11,11 @@ import collectors.models.InfoObject;
 public class APIInfoObject extends InfoObject {
 
 	private String microserviceName;
-	private String address;
 	private Map<String, Set<String>> pathToMethod;
 
 	public APIInfoObject(String name) {
 		this.setMicroserviceName(name);
 		pathToMethod = new HashMap<>();
-	}
-
-	public String getAddress() {
-		return address;
-	}
-
-	public void setAddress(String address) {
-		this.address = address;
 	}
 
 	public Map<String, Set<String>> getPathToMethod() {
