@@ -28,7 +28,7 @@ import collectors.APIInfoCollector;
 import collectors.ComponentInfoCollector;
 import collectors.models.InfoObject;
 import collectors.models.maven.CollectedMavenInfoObject;
-import collectors.models.maven.ComponentInfoObject;
+import collectors.models.maven.ModuleToComponentInfoObject;
 import collectors.models.maven.ModuleInfoObject;
 import collectors.models.restapi.APIConsumptionInfoObject;
 import collectors.models.restapi.APIInfoObject;
@@ -78,7 +78,7 @@ public class FileAggregator {
 
 		log.info("    - COMPONENT FILES - ");
 		List<File> componentInfoFiles = findFiles(ComponentInfoCollector.FOLDER_NAME, ComponentInfoCollector.FILE_NAME);
-		List<ComponentInfoObject> packageJsonObjects = createJSONObjects(componentInfoFiles, ComponentInfoObject.class);
+		List<ModuleToComponentInfoObject> packageJsonObjects = createJSONObjects(componentInfoFiles, ModuleToComponentInfoObject.class);
 
 		log.info("    - AGGREGATE - ");
 		/* join information in one file */

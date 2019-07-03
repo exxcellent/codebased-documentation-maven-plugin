@@ -14,7 +14,7 @@ public class CollectedMavenInfoObject extends InfoObject{
 	private String subsystem;
 	private Map<String, List<String>> moduleDependencies;
 	private List<ModuleInfoObject> modules;
-	private List<ComponentInfoObject> components;
+	private List<ModuleToComponentInfoObject> components;
 	
 	public CollectedMavenInfoObject(String projectName, String tag, String system, String subsystem) {
 		this.setProjectName(projectName);
@@ -46,11 +46,11 @@ public class CollectedMavenInfoObject extends InfoObject{
 		this.modules = modules;
 	}
 
-	public List<ComponentInfoObject> getComponents() {
+	public List<ModuleToComponentInfoObject> getComponents() {
 		return components;
 	}
 
-	public void setComponents(List<ComponentInfoObject> components) {
+	public void setComponents(List<ModuleToComponentInfoObject> components) {
 		this.components = components;
 	}
 

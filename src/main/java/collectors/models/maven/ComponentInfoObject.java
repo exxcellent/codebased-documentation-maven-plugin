@@ -1,40 +1,32 @@
 package collectors.models.maven;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Set;
 
 import collectors.models.InfoObject;
 
 public class ComponentInfoObject extends InfoObject {
 	
-	private String moduleName;
-	private List<PackageInfoObject> components; 
+	private String packageName;
+	private Set<String> dependsOn;
 
 	public ComponentInfoObject(String name) {
-		this.setModuleName(name);
+		this.setPackageName(name);
 	}
 
-	public List<PackageInfoObject> getComponents() {
-		return components;
+	public Set<String> getDependsOn() {
+		return dependsOn;
 	}
 
-	public void setComponents(List<PackageInfoObject> components) {
-		this.components = components;
-	}
-	
-	public void addComponent(PackageInfoObject component) {
-		if (this.components == null) {
-			this.components = new ArrayList<>();
-		}
-		components.add(component);
+	public void setDependsOn(Set<String> dependsOn) {
+		this.dependsOn = dependsOn;
 	}
 
-	public String getModuleName() {
-		return moduleName;
+	public String getPackageName() {
+		return packageName;
 	}
 
-	public void setModuleName(String moduleName) {
-		this.moduleName = moduleName;
+	public void setPackageName(String packageName) {
+		this.packageName = packageName;
 	}
 
 }

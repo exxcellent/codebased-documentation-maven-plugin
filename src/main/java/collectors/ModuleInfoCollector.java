@@ -53,49 +53,10 @@ public class ModuleInfoCollector implements InformationCollector {
 		}
 		
 		/*Create DependencyInfoObjects for the non test dependencies of the current project*/
-		List<ProjectInfoObject> dependencies = turnToDependencyInfoObject(
-				listNonTestDependencies(project.getDependencies()));
 		
-		ModuleInfoObject info = new ModuleInfoObject(project, dependencies, dependsOn);
+		ModuleInfoObject info = new ModuleInfoObject(project, dependsOn);
 		
 		FileWriter.writeInfoToJSONFile(dirPath, FILE_NAME, info, log);
 
-	}
-
-	/**
-	 * FIlters all dependencies that are optional or have their scope set to test.
-	 * 
-	 * @param dependencies List of dependencies to filter.
-	 * @return List of the filtered dependencies.
-	 */
-	private List<Dependency> listNonTestDependencies(List<Dependency> dependencies) {
-		List<Dependency> nonTestDependencies = new ArrayList<>();
-
-		for (Dependency dependency : dependencies) {
-			if (!dependency.isOptional() && !dependency.getScope().equalsIgnoreCase("test")) {
-				nonTestDependencies.add(dependency);
-			}
-		}
-
-		return nonTestDependencies;
-	}
-
-	/**
-	 * Turns the given list of Dependency objects into a list of
-	 * DependencyInfoObjects.
-	 * 
-	 * @param dependencies List of Dependency objects, whose information should be
-	 *                     turned into DependencyInfoObjects.
-	 * @return List of DependencyInfoObjects
-	 */
-	private List<ProjectInfoObject> turnToDependencyInfoObject(List<Dependency> dependencies) {
-
-		List<ProjectInfoObject> objects = new ArrayList<>();
-		for (Dependency dependency : dependencies) {
-			ProjectInfoObject obj = new ProjectInfoObject(dependency);
-			objects.add(obj);
-		}
-
-		return objects;
 	}
 }

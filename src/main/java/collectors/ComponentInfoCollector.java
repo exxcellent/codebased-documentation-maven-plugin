@@ -17,8 +17,8 @@ import org.apache.maven.project.MavenProject;
 import com.thoughtworks.qdox.JavaProjectBuilder;
 import com.thoughtworks.qdox.model.JavaSource;
 
+import collectors.models.maven.ModuleToComponentInfoObject;
 import collectors.models.maven.ComponentInfoObject;
-import collectors.models.maven.PackageInfoObject;
 import edu.emory.mathcs.backport.java.util.Arrays;
 import filemanagement.FileWriter;
 
@@ -78,14 +78,14 @@ public class ComponentInfoCollector implements InformationCollector {
 		String dirPath = Paths.get(project.getBasedir().getAbsolutePath(), "target", FOLDER_NAME).toString();
 		log.info("target file: " + FILE_NAME);
 		
-		List<PackageInfoObject> packageInfo = new ArrayList<>();
+		List<ComponentInfoObject> packageInfo = new ArrayList<>();
 		for (Entry<String, Set<String>> entry : packageDependencies.entrySet()) {
-			PackageInfoObject pkgInfo = new PackageInfoObject(entry.getKey());
+			ComponentInfoObject pkgInfo = new ComponentInfoObject(entry.getKey());
 			pkgInfo.setDependsOn(entry.getValue());
 			packageInfo.add(pkgInfo);
 		}
 		
-		ComponentInfoObject info = new ComponentInfoObject(project.getName());
+		ModuleToComponentInfoObject info = new ModuleToComponentInfoObject(project.getName());
 		info.setComponents(packageInfo);
 		FileWriter.writeInfoToJSONFile(dirPath, FILE_NAME, info, log);
 	}

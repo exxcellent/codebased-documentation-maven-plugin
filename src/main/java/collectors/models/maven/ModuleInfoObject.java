@@ -15,26 +15,23 @@ public class ModuleInfoObject extends InfoObject{
 	private String version;
 	private String tag;
 	
-	private List<ProjectInfoObject> dependencies;
 	private List<String> dependsOn;
 	
-	public ModuleInfoObject(String name, String artifactID, String groupId, String version, String tag, List<ProjectInfoObject> dependencies, List<String> dependsOn) {
+	public ModuleInfoObject(String name, String artifactID, String groupId, String version, String tag, List<String> dependsOn) {
 		this.setModuleName(name);
 		this.artifactID = artifactID;
 		this.groupID = groupId;
 		this.version = version;
 		this.tag = tag;
-		this.dependencies = dependencies;
 		this.dependsOn = dependsOn;
 	}
 
-	public ModuleInfoObject(MavenProject project, List<ProjectInfoObject> dependencies, List<String> dependsOn) {
+	public ModuleInfoObject(MavenProject project, List<String> dependsOn) {
 		this.setModuleName(project.getName());
 		this.artifactID = project.getArtifactId();
 		this.groupID = project.getGroupId();
 		this.version = project.getVersion();
 		this.tag = this.groupID + ":" + this.artifactID + ":" + this.version;
-		this.dependencies = dependencies;
 		this.dependsOn = dependsOn;
 	}
 	
@@ -69,22 +66,7 @@ public class ModuleInfoObject extends InfoObject{
 	public void setTag(String tag) {
 		this.tag = tag;
 	}
-	
-	public List<ProjectInfoObject> getDependencies() {
-		return dependencies;
-	}
-	
-	public void setDependencies(List<ProjectInfoObject> dependencies) {
-		this.dependencies = dependencies;
-	}
-	
-	public void addDependency(ProjectInfoObject dependency) {
-		if(dependencies == null) {
-			this.dependencies = new ArrayList<ProjectInfoObject>();
-		}
-		this.dependencies.add(dependency);
-	}
-	
+		
 	public List<String> getDependsOn() {
 		return dependsOn;
 	}
