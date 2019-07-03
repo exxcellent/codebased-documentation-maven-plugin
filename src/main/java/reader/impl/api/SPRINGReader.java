@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -35,6 +36,7 @@ import com.thoughtworks.qdox.model.JavaParameter;
 
 import reader.interfaces.APIReader;
 import util.HttpMethods;
+import util.OfferDescription;
 import util.Pair;
 
 /**
@@ -76,7 +78,7 @@ public class SPRINGReader implements APIReader {
 	}
 
 	@Override
-	public List<Pair<String, HttpMethods>> getPathsAndMethods(File src) {
+	public List<OfferDescription> getPathsAndMethods(File src) {
 		String basePath;
 		if (contextPath != null) {
 			basePath = contextPath;
@@ -87,10 +89,11 @@ public class SPRINGReader implements APIReader {
 		JavaProjectBuilder builder = new JavaProjectBuilder();
 		builder.addSourceTree(src);
 
-		List<Pair<String, HttpMethods>> paths = new ArrayList<>();
+		Map<String, OfferDescription> packageNameToOffer = new HashMap<>();
 
 		for (JavaClass currentClass : builder.getClasses()) {
 
+			List<Pair<String, HttpMethods>> paths = new ArrayList<>();
 			Pair<List<Pair<String, HttpMethods>>, Boolean> mappingAndController = getBaseMappingAndController(
 					currentClass);
 			boolean controller = mappingAndController.getRight();
@@ -102,9 +105,27 @@ public class SPRINGReader implements APIReader {
 					paths.addAll(getMethodAnnotations(method, baseMapping));
 				}
 			}
+			
+			if (!paths.isEmpty()) {
+				String packageName = currentClass.getPackageName();
+				
+				OfferDescription currentOffer = null;
+				if (packageNameToOffer.containsKey(packageName)) {
+					currentOffer = packageNameToOffer.get(packageName);
+				} else {
+					currentOffer = new OfferDescription();
+					currentOffer.setPackageName(packageName);
+					packageNameToOffer.put(packageName, currentOffer);
+				}
+				
+				for (Pair<String, HttpMethods> pair : paths) {
+					currentOffer.addPathToMethod(pair);
+				}
+				
+			}
 		}
 
-		return paths;
+		return new ArrayList<>(packageNameToOffer.values());
 	}
 
 	/**
@@ -216,7 +237,7 @@ public class SPRINGReader implements APIReader {
 	}
 
 	private String setTypeInPath(JavaMethod method, String path) {
-		String newPath = path;
+		String newPath = removeRegularExpressionsFromPath(path);
 		for (JavaParameter param : method.getParameters()) {
 			for (JavaAnnotation annotation : param.getAnnotations()) {
 				if (annotation.getType().getCanonicalName().equalsIgnoreCase(PathVariable.class.getCanonicalName())) {
@@ -226,14 +247,18 @@ public class SPRINGReader implements APIReader {
 								: annotation.getNamedParameter("name");
 					}
 					String paramName = name.toString().replaceAll("\"", "");
-					if (path.contains("{" + paramName + "}")) {
-						newPath = path.replace("{" + paramName + "}", "{" + param.getJavaClass().getSimpleName().toUpperCase(Locale.ROOT) + "}");
+					if (newPath.contains("{" + paramName + "}")) {
+						newPath = newPath.replace("{" + paramName + "}", "{" + param.getJavaClass().getSimpleName().toUpperCase(Locale.ROOT) + "}");
 					}
 				}
 			}
 		}
 
 		return newPath;
+	}
+	
+	private String removeRegularExpressionsFromPath(String path) {
+		return path.replaceAll(":[^}]*}", "}");
 	}
 
 	/**

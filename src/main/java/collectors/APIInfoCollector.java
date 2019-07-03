@@ -18,8 +18,9 @@ import reader.impl.apiconsumption.AnnotationReader;
 import reader.impl.apiconsumption.ApacheCommonsClientReader;
 import reader.interfaces.APIReader;
 import reader.interfaces.ConsumesAPIReader;
-import util.ConsumeDescriptionTriple;
+import util.ConsumeDescription;
 import util.HttpMethods;
+import util.OfferDescription;
 import util.Pair;
 
 public class APIInfoCollector implements InformationCollector {
@@ -80,12 +81,13 @@ public class APIInfoCollector implements InformationCollector {
 			log.info("Using Spring Boot");
 		}
 
-		List<Pair<String, HttpMethods>> mappings = apiReader.getPathsAndMethods(project.getBasedir());
+		List<OfferDescription> mappings = apiReader.getPathsAndMethods(project.getBasedir());
 
 		APIInfoObject infoObject = new APIInfoObject(getServiceTag()); // TODO: NAME?!
-		for (Pair<String, HttpMethods> mapping : mappings) {
-			infoObject.addMethod(mapping.getLeft(), mapping.getRight().name());
-		}
+//		for (Pair<String, HttpMethods> mapping : mappings) {
+//			infoObject.addMethod(mapping.getLeft(), mapping.getRight().name());
+//		}
+		infoObject.setApi(mappings);
 		return infoObject;
 	}
 
@@ -113,8 +115,8 @@ public class APIInfoCollector implements InformationCollector {
 			log.error("Could not determine Http client type -> Using annotations.");
 			reader = new AnnotationReader();
 		}
-		List<ConsumeDescriptionTriple> triples = reader.getAPIConsumption(project.getBasedir());
-		for (ConsumeDescriptionTriple triple : triples) {
+		List<ConsumeDescription> triples = reader.getAPIConsumption(project.getBasedir());
+		for (ConsumeDescription triple : triples) {
 //			infoObject.addServiceToPathToMethod(triple);
 			infoObject.addConsumeDescriptionTriple(triple);
 		}

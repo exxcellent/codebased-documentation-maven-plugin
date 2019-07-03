@@ -34,7 +34,9 @@ import collectors.models.restapi.APIConsumptionInfoObject;
 import collectors.models.restapi.APIInfoObject;
 import collectors.models.restapi.CollectedAPIInfoObject;
 import mojos.DocumentationMojo;
-import util.ConsumeDescriptionTriple;
+import util.ConsumeDescription;
+import util.HttpMethods;
+import util.OfferDescription;
 
 /**
  * Class for gathering and combining information files.
@@ -96,15 +98,15 @@ public class FileAggregator {
 		log.info("    - REST OFFER FILE - ");
 		List<File> interfaceInfoFiles = findFiles(APIInfoCollector.FOLDER_NAME, APIInfoCollector.FILE_NAME);
 		List<APIInfoObject> apiInfoObjects = createJSONObjects(interfaceInfoFiles, APIInfoObject.class);
-
+		
 		/* merge APIINfoObjects */
 		APIInfoObject apiInfoObject = new APIInfoObject(findProjectName()); // TODO: name??
 		for (APIInfoObject info : apiInfoObjects) {
-			for (Entry<String, Set<String>> entry : info.getPathToMethod().entrySet()) {
-				apiInfoObject.addMethod(entry.getKey(), entry.getValue());
-			}
-		}
-
+			apiInfoObject.addOffers(info.getApi());
+		}		
+		
+		System.out.println("---");
+		
 		log.info("    - REST CONSUME FILE - ");
 		/* get APIConsumptionInfoObjects */
 		log.info("    - AGGREGATE - ");
@@ -116,11 +118,7 @@ public class FileAggregator {
 		collectedInfo.setProvide(apiInfoObject);
 
 		for (APIConsumptionInfoObject consumption : apiConsumeInfoObjects) {
-			System.out.println(consumption.getMicroserviceName());
-			for (ConsumeDescriptionTriple desc : consumption.getConsumes()) {
-				System.out.println("   - " + desc.getServiceName() + " - " + desc.getPath());
-			}
-				collectedInfo.addConsumeDescriptionTriples(consumption.getConsumes());
+			collectedInfo.addConsumeDescriptionTriples(consumption.getConsumes());
 		}
 
 		log.info("    - WRITE - ");

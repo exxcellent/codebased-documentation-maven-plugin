@@ -28,6 +28,7 @@ import com.google.gson.reflect.TypeToken;
 import edu.emory.mathcs.backport.java.util.Arrays;
 import reader.interfaces.APIReader;
 import util.HttpMethods;
+import util.OfferDescription;
 import util.Pair;
 
 public class SwaggerReader implements APIReader {
@@ -48,7 +49,7 @@ public class SwaggerReader implements APIReader {
 	 * src is dir in which the files are to be searched for.
 	 */
 	@Override
-	public List<Pair<String, HttpMethods>> getPathsAndMethods(File src) {
+	public List<OfferDescription> getPathsAndMethods(File src) {
 		
 		evaluateConfigFile();
 		
@@ -126,8 +127,9 @@ public class SwaggerReader implements APIReader {
 		return returnFiles;
 	}
 	
-	private List<Pair<String, HttpMethods>> turnToMapping(List<Path> swaggerFiles) {
+	private List<OfferDescription> turnToMapping(List<Path> swaggerFiles) {
 		
+		List<OfferDescription> offers = new ArrayList<>();
 		List<Pair<String, HttpMethods>> mapping = new ArrayList<>();
 		
 		for (Path currentPath : swaggerFiles) {
@@ -155,7 +157,7 @@ public class SwaggerReader implements APIReader {
 			}
 			
 			if (fileMap == null || fileMap.isEmpty()) {
-				return mapping;
+				return offers;
 			}
 			
 			String pathBase = "";
@@ -178,7 +180,7 @@ public class SwaggerReader implements APIReader {
 				
 				
 			} else {
-				return mapping;
+				return offers;
 			}
 			
 		}

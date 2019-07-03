@@ -13,10 +13,10 @@ import com.thoughtworks.qdox.model.JavaClass;
 import com.thoughtworks.qdox.model.JavaMethod;
 
 import annotation.ConsumesAPI;
-import util.ConsumeDescriptionTriple;
+import util.ConsumeDescription;
 
 public interface ConsumesAPIReader {
 	
-	public List<ConsumeDescriptionTriple> getAPIConsumption(File src);
+	public List<ConsumeDescription> getAPIConsumption(File src);
 
 }

@@ -6,13 +6,13 @@ import java.util.List;
 
 import annotation.ConsumesAPI;
 import collectors.models.InfoObject;
-import util.ConsumeDescriptionTriple;
+import util.ConsumeDescription;
 
 public class CollectedAPIInfoObject extends InfoObject {
 
 	private String serviceName;
 	private APIInfoObject provide;
-	private List<ConsumeDescriptionTriple> consume;
+	private List<ConsumeDescription> consume;
 
 	public CollectedAPIInfoObject(String name) {
 		if (name != null) {
@@ -38,22 +38,22 @@ public class CollectedAPIInfoObject extends InfoObject {
 		this.provide = provide;
 	}
 
-	public List<ConsumeDescriptionTriple> getConsume() {
+	public List<ConsumeDescription> getConsume() {
 		return consume;
 	}
 
-	public void setConsume(List<ConsumeDescriptionTriple> consume) {
+	public void setConsume(List<ConsumeDescription> consume) {
 		this.consume = consume;
 	}
 
-	public void addConsumeDescriptionTriple(ConsumeDescriptionTriple triple) {
+	public void addConsumeDescriptionTriple(ConsumeDescription triple) {
 		if (this.consume == null) {
 			this.consume = new ArrayList<>();
 		}
 		this.consume.add(triple);
 	}
 
-	public void addConsumeDescriptionTriples(Collection<ConsumeDescriptionTriple> triples) {
+	public void addConsumeDescriptionTriples(Collection<ConsumeDescription> triples) {
 		if (this.consume == null) {
 			this.consume = new ArrayList<>();
 		}

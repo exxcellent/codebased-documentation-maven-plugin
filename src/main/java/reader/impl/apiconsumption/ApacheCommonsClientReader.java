@@ -12,13 +12,13 @@ import com.thoughtworks.qdox.JavaProjectBuilder;
 import com.thoughtworks.qdox.model.JavaClass;
 
 import reader.interfaces.ConsumesAPIReader;
-import util.ConsumeDescriptionTriple;
+import util.ConsumeDescription;
 
 public class ApacheCommonsClientReader implements ConsumesAPIReader {
 
 	@Override
-	public List<ConsumeDescriptionTriple> getAPIConsumption(File src) {
-		List<ConsumeDescriptionTriple> returnList = new ArrayList<>();
+	public List<ConsumeDescription> getAPIConsumption(File src) {
+		List<ConsumeDescription> returnList = new ArrayList<>();
 
 		
 		

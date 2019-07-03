@@ -8,7 +8,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import javax.ws.rs.ApplicationPath;
@@ -40,8 +43,11 @@ import com.thoughtworks.qdox.model.JavaParameter;
 import reader.interfaces.APIReader;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
 
 import util.HttpMethods;
+import util.OfferDescription;
 import util.Pair;
 
 public class JAXRSReader implements APIReader {
@@ -63,12 +69,13 @@ public class JAXRSReader implements APIReader {
 	}
 
 	@Override
-	public List<Pair<String, HttpMethods>> getPathsAndMethods(File src) {
+	public List<OfferDescription> getPathsAndMethods(File src) {
 
 		JavaProjectBuilder builder = new JavaProjectBuilder();
 		builder.addSourceTree(src);
 		String applicationPath = readPathFromWebXML();
 
+		Map<String, OfferDescription> packageNamesToOffers = new HashMap<>();
 		List<Pair<String, HttpMethods>> mappings = new ArrayList<>();
 
 		for (JavaClass currentClass : builder.getClasses()) {
@@ -84,8 +91,19 @@ public class JAXRSReader implements APIReader {
 						Pair<String, HttpMethods> methodPair = getMethodAnnotations(method, classPath);
 						if (methodPair != null) {
 							mappings.add(methodPair);
+
+							String packageName = currentClass.getPackageName();
+							OfferDescription currentOffer = null;
+							if (packageNamesToOffers.containsKey(packageName)) {
+								currentOffer = packageNamesToOffers.get(packageName);
+							} else {
+								currentOffer = new OfferDescription();
+								currentOffer.setPackageName(packageName);
+								packageNamesToOffers.put(packageName, currentOffer);
+							}
+							currentOffer.addPathToMethod(methodPair);
 						}
-						
+
 					}
 				}
 			}
@@ -100,7 +118,7 @@ public class JAXRSReader implements APIReader {
 			applicationPath = formatBasePath(glassfishPath) + formatConcatPath(applicationPath);
 		}
 
-		return concatApplicationPathTo(mappings, applicationPath);
+		return concatApplicationPathTo(packageNamesToOffers.values(), applicationPath);
 	}
 
 	/**
@@ -141,21 +159,27 @@ public class JAXRSReader implements APIReader {
 		return null;
 
 	}
-	
+
 	private String setTypeInPath(JavaMethod method, String path) {
-		String newPath = path;
+		String newPath = removeRegularExpressionsFromPath(path);
 		for (JavaParameter param : method.getParameters()) {
-			for (JavaAnnotation annotation : param.getAnnotations()) {		
+			for (JavaAnnotation annotation : param.getAnnotations()) {
 				if (annotation.getType().getCanonicalName().equalsIgnoreCase(PathParam.class.getCanonicalName())) {
-					String paramName = annotation.getNamedParameter("value") == null ? param.getName() : annotation.getNamedParameter("value").toString();
+					String paramName = annotation.getNamedParameter("value") == null ? param.getName()
+							: annotation.getNamedParameter("value").toString();
 					paramName = paramName.replaceAll("\"", "");
 					if (path.contains("{" + paramName + "}")) {
-						newPath = path.replace("{" + paramName + "}", "{" + param.getJavaClass().getSimpleName().toUpperCase(Locale.ROOT) + "}");
-					} 
+						newPath = newPath.replace("{" + paramName + "}",
+								"{" + param.getJavaClass().getSimpleName().toUpperCase(Locale.ROOT) + "}");
+					}
 				}
 			}
 		}
 		return newPath;
+	}
+
+	private String removeRegularExpressionsFromPath(String path) {
+		return path.replaceAll(":[^}]*}", "}");
 	}
 
 	private HttpMethods extractHttpMethod(String annotationClass) {
@@ -174,24 +198,41 @@ public class JAXRSReader implements APIReader {
 	 *                        application. Can be null.
 	 * @return List of pairs onto which the application path was concatenated.
 	 */
-	private List<Pair<String, HttpMethods>> concatApplicationPathTo(List<Pair<String, HttpMethods>> paths,
+	private List<OfferDescription> concatApplicationPathTo(Collection<OfferDescription> offerDescriptions,
 			String applicationPath) {
-		List<Pair<String, HttpMethods>> returnPaths = new ArrayList<>();
+
+		List<OfferDescription> returnOffers = new ArrayList<>();
+
 		if (applicationPath != null) {
 			applicationPath = formatBasePath(applicationPath);
-			for (Pair<String, HttpMethods> currentPair : paths) {
-				Pair<String, HttpMethods> longPathPair = new Pair<>(
-						applicationPath + formatConcatPath(currentPair.getLeft()), currentPair.getRight());
-				returnPaths.add(longPathPair);
+
+			for (OfferDescription offer : offerDescriptions) {
+				OfferDescription newOffer = new OfferDescription();
+				newOffer.setPackageName(offer.getPackageName());
+				for (Entry<String, Set<HttpMethods>> entry : offer.getPathToMethodMappings().entrySet()) {
+					for (HttpMethods meth : entry.getValue()) {
+						Pair<String, HttpMethods> longPathPair = new Pair<>(
+								applicationPath + formatConcatPath(entry.getKey()), meth);
+						newOffer.addPathToMethod(longPathPair);
+					}
+				}
+				returnOffers.add(newOffer);
 			}
 		} else {
-			for (Pair<String, HttpMethods> currentPair : paths) {
-				Pair<String, HttpMethods> longPathPair = new Pair<>(formatBasePath(currentPair.getLeft()),
-						currentPair.getRight());
-				returnPaths.add(longPathPair);
+			for (OfferDescription offer : offerDescriptions) {
+				OfferDescription newOffer = new OfferDescription();
+				newOffer.setPackageName(offer.getPackageName());
+				for (Entry<String, Set<HttpMethods>> entry : offer.getPathToMethodMappings().entrySet()) {
+					for (HttpMethods meth : entry.getValue()) {
+						Pair<String, HttpMethods> longPathPair = new Pair<>(
+								formatBasePath(entry.getKey()), meth);
+						newOffer.addPathToMethod(longPathPair);
+					}
+				}
+				returnOffers.add(newOffer);
 			}
 		}
-		return returnPaths;
+		return returnOffers;
 	}
 
 	/**

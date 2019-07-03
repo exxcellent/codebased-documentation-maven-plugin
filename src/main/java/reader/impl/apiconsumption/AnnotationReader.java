@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import com.google.common.collect.Sets;
 import com.thoughtworks.qdox.JavaProjectBuilder;
 import com.thoughtworks.qdox.model.JavaAnnotation;
 import com.thoughtworks.qdox.model.JavaClass;
@@ -12,13 +13,13 @@ import com.thoughtworks.qdox.model.JavaMethod;
 
 import annotation.ConsumesAPI;
 import reader.interfaces.ConsumesAPIReader;
-import util.ConsumeDescriptionTriple;
+import util.ConsumeDescription;
 
 public class AnnotationReader implements ConsumesAPIReader {
 
 	@Override
-	public List<ConsumeDescriptionTriple> getAPIConsumption(File src) {
-		List<ConsumeDescriptionTriple> returnList = new ArrayList<>();
+	public List<ConsumeDescription> getAPIConsumption(File src) {
+		List<ConsumeDescription> returnList = new ArrayList<>();
 
 		JavaProjectBuilder builder = new JavaProjectBuilder();
 		builder.addSourceTree(src);
@@ -27,8 +28,8 @@ public class AnnotationReader implements ConsumesAPIReader {
 			if (clazz.getSource().getImports().contains(ConsumesAPI.class.getCanonicalName())) {
 				System.out.println("found class -> " + clazz.getCanonicalName());
 				searchForAPIInfo(clazz, returnList);
-			} 
-			
+			}
+
 		}
 
 		return returnList;
@@ -41,11 +42,11 @@ public class AnnotationReader implements ConsumesAPIReader {
 	 * @param clazz      class to be evaluated.
 	 * @param returnList List containing the found api consumption info.
 	 */
-	private void searchForAPIInfo(JavaClass clazz, List<ConsumeDescriptionTriple> returnList) {
+	private void searchForAPIInfo(JavaClass clazz, List<ConsumeDescription> returnList) {
 		for (JavaMethod method : clazz.getMethods()) {
 			for (JavaAnnotation annotation : method.getAnnotations()) {
 				if (annotation.getType().getCanonicalName().equals(ConsumesAPI.class.getCanonicalName())) {
-					addConsumesAPIInfo(annotation, returnList);
+					addConsumesAPIInfo(clazz, annotation, returnList);
 					break;
 				}
 			}
@@ -58,33 +59,33 @@ public class AnnotationReader implements ConsumesAPIReader {
 	 * already an object with the same path and service name.
 	 * 
 	 * @param annotation JavaAnnotation of type ConsumesAPI.class.
-	 * @param tripleList LIst to which the new info is to be added to.
+	 * @param consumeList LIst to which the new info is to be added to.
 	 */
-	private void addConsumesAPIInfo(JavaAnnotation annotation, List<ConsumeDescriptionTriple> tripleList) {
+	private void addConsumesAPIInfo(JavaClass clazz, JavaAnnotation annotation, List<ConsumeDescription> consumeList) {
 		String name = ConsumesAPI.DEFAULT_SERVICE;
 		if (annotation.getNamedParameter("service") != null) {
-			name = format(annotation.getNamedParameter("service").toString());			
+			name = format(annotation.getNamedParameter("service").toString());
 		}
 
 		String path = setTypeInPath(format(annotation.getNamedParameter("path").toString()));
 		String methodName = format(annotation.getNamedParameter("method").toString());
-		
+		String packageName = clazz.getPackageName();
+
 		System.out.println(name + "  -  " + path + "  -  " + methodName);
 
-		if (!addToList(tripleList, name, path, methodName)) {
-			ConsumeDescriptionTriple newTriple = new ConsumeDescriptionTriple();
+		if (!addToList(consumeList, name, packageName, path, methodName)) {
+			ConsumeDescription newTriple = new ConsumeDescription();
 			newTriple.setServiceName(name);
-			newTriple.setPath(path);
-			newTriple.addMethod(methodName);
-
-			tripleList.add(newTriple);
+			newTriple.setPackageName(packageName);
+			newTriple.addPathToMethod(path, Sets.newHashSet(methodName));
+			consumeList.add(newTriple);
 		}
 	}
 
 	private String format(String toFormat) {
 		return toFormat.trim().trim().replaceAll("\"", "");
 	}
-	
+
 	private String setTypeInPath(String path) {
 		String setPath = "";
 		String[] splitPath = path.split("/");
@@ -95,7 +96,7 @@ public class AnnotationReader implements ConsumesAPIReader {
 		for (String part : splitPath) {
 			if (part.startsWith("{") && part.endsWith("}")) {
 				setPath = String.join("/", setPath, part.toUpperCase(Locale.ROOT));
-			} else if (!part.isEmpty()){
+			} else if (!part.isEmpty()) {
 				setPath = String.join("/", setPath, part);
 			}
 		}
@@ -111,17 +112,18 @@ public class AnnotationReader implements ConsumesAPIReader {
 	 * object, the given method is added to it and the method returns true, else
 	 * nothing is done and false is returned.
 	 * 
-	 * @param triples 
-	 * @param name 
-	 * @param path 
-	 * @param method 
-	 * @return 
+	 * @param consume
+	 * @param serviceName
+	 * @param path
+	 * @param method
+	 * @return
 	 */
-	private boolean addToList(List<ConsumeDescriptionTriple> triples, String name, String path, String method) {
+	private boolean addToList(List<ConsumeDescription> consume, String serviceName, String packageName, String path,
+			String method) {
 
-		for (ConsumeDescriptionTriple currentTriple : triples) {
-			if (currentTriple.getServiceName().equals(name) && currentTriple.getPath().equals(path)) {
-				currentTriple.addMethod(method);
+		for (ConsumeDescription currentTriple : consume) {
+			if (currentTriple.getServiceName().equals(serviceName) && currentTriple.getPackageName().equals(packageName)) {
+				currentTriple.addPathToMethod(path, Sets.newHashSet(method));
 				return true;
 			}
 		}
