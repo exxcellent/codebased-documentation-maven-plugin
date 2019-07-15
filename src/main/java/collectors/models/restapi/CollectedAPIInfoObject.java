@@ -7,10 +7,12 @@ import java.util.List;
 import annotation.ConsumesAPI;
 import collectors.models.InfoObject;
 import util.ConsumeDescription;
+import util.OfferDescription;
 
 public class CollectedAPIInfoObject extends InfoObject {
 
 	private String serviceName;
+	private String serviceTag;
 	private APIInfoObject provide;
 	private List<ConsumeDescription> consume;
 
@@ -28,6 +30,14 @@ public class CollectedAPIInfoObject extends InfoObject {
 
 	public void setServiceName(String serviceName) {
 		this.serviceName = serviceName;
+	}
+
+	public String getServiceTag() {
+		return serviceTag;
+	}
+
+	public void setServiceTag(String serviceTag) {
+		this.serviceTag = serviceTag;
 	}
 
 	public APIInfoObject getProvide() {
@@ -59,5 +69,27 @@ public class CollectedAPIInfoObject extends InfoObject {
 		}
 		this.consume.addAll(triples);
 	}
+	
+//	public List<OfferDescription> getProvide() {
+//		return provide;
+//	}
+//
+//	public void setProvide(List<OfferDescription> offer) {
+//		this.provide = offer;
+//	}
+//
+//	public void addOfferDescriptionTriple(OfferDescription offer) {
+//		if (this.provide == null) {
+//			this.provide = new ArrayList<>();
+//		}
+//		this.provide.add(offer);
+//	}
+//
+//	public void addOfferDescriptionTriples(Collection<OfferDescription> offers) {
+//		if (this.provide == null) {
+//			this.provide = new ArrayList<>();
+//		}
+//		this.provide.addAll(offers);
+//	}
 
 }

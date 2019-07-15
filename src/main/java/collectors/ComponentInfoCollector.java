@@ -84,8 +84,8 @@ public class ComponentInfoCollector implements InformationCollector {
 			pkgInfo.setDependsOn(entry.getValue());
 			packageInfo.add(pkgInfo);
 		}
-		
-		ModuleToComponentInfoObject info = new ModuleToComponentInfoObject(project.getName());
+		String moduleId = project.getGroupId() + ":" + project.getArtifactId() + ":" + project.getVersion();
+		ModuleToComponentInfoObject info = new ModuleToComponentInfoObject(moduleId);
 		info.setComponents(packageInfo);
 		FileWriter.writeInfoToJSONFile(dirPath, FILE_NAME, info, log);
 	}

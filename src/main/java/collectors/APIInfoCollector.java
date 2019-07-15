@@ -83,17 +83,15 @@ public class APIInfoCollector implements InformationCollector {
 
 		List<OfferDescription> mappings = apiReader.getPathsAndMethods(project.getBasedir());
 
-		APIInfoObject infoObject = new APIInfoObject(getServiceTag()); // TODO: NAME?!
-//		for (Pair<String, HttpMethods> mapping : mappings) {
-//			infoObject.addMethod(mapping.getLeft(), mapping.getRight().name());
-//		}
+		APIInfoObject infoObject = new APIInfoObject(getServiceTag(), getServiceName());
+		
 		infoObject.setApi(mappings);
 		return infoObject;
 	}
 
 	private APIConsumptionInfoObject generateAPIConsumptionInfo() {
 		APIConsumptionInfoObject infoObject = new APIConsumptionInfoObject();
-		infoObject.setMicroserviceName(getServiceTag());
+		infoObject.setMicroserviceTag(getServiceTag());
 
 		ConsumptionInfo location = getInfoLocation();
 
@@ -126,6 +124,20 @@ public class APIInfoCollector implements InformationCollector {
 	private String getServiceTag() {
 		String tag = "";
 		MavenProject execProject = project.getExecutionProject();
+
+		tag += execProject.getGroupId() + ":";
+		tag += execProject.getArtifactId() + ":";
+		tag += execProject.getVersion();
+
+		return tag;
+	}
+	
+	private String getServiceName() {
+		MavenProject execProject = project.getExecutionProject();
+		if (execProject.getName() != null && !execProject.getName().isEmpty()) {
+			return execProject.getName();
+		}
+		String tag = "";
 
 		tag += execProject.getGroupId() + ":";
 		tag += execProject.getArtifactId() + ":";

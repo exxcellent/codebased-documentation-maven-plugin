@@ -7,7 +7,7 @@ import collectors.models.InfoObject;
 
 public class ModuleToComponentInfoObject extends InfoObject {
 	
-	private String moduleName;
+	private String moduleTag;
 	private List<ComponentInfoObject> components; 
 
 	public ModuleToComponentInfoObject(String name) {
@@ -30,11 +30,11 @@ public class ModuleToComponentInfoObject extends InfoObject {
 	}
 
 	public String getModuleName() {
-		return moduleName;
+		return moduleTag;
 	}
 
-	public void setModuleName(String moduleName) {
-		this.moduleName = moduleName;
+	public void setModuleName(String moduleTag) {
+		this.moduleTag = moduleTag;
 	}
 
 }

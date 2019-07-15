@@ -100,7 +100,7 @@ public class FileAggregator {
 		List<APIInfoObject> apiInfoObjects = createJSONObjects(interfaceInfoFiles, APIInfoObject.class);
 		
 		/* merge APIINfoObjects */
-		APIInfoObject apiInfoObject = new APIInfoObject(findProjectName()); // TODO: name??
+		APIInfoObject apiInfoObject = new APIInfoObject(findProjectTag(), findProjectName());
 		for (APIInfoObject info : apiInfoObjects) {
 			apiInfoObject.addOffers(info.getApi());
 		}		
@@ -115,6 +115,7 @@ public class FileAggregator {
 				APIConsumptionInfoObject.class);
 
 		CollectedAPIInfoObject collectedInfo = new CollectedAPIInfoObject(apiInfoObject.getMicroserviceName());
+		collectedInfo.setServiceTag(apiInfoObject.getMicroserviceTag());
 		collectedInfo.setProvide(apiInfoObject);
 
 		for (APIConsumptionInfoObject consumption : apiConsumeInfoObjects) {
@@ -140,8 +141,13 @@ public class FileAggregator {
 
 	private String findProjectTag() {
 		MavenProject root = session.getTopLevelProject();
-		return (root.getGroupId() + "_" + root.getArtifactId() + "_" + root.getVersion()).replace(".", "-");
+		return (root.getGroupId() + ":" + root.getArtifactId() + ":" + root.getVersion());
 	}
+	
+//	private String findProjectTagForFile() {
+//		MavenProject root = session.getTopLevelProject();
+//		return (root.getGroupId() + "_" + root.getArtifactId() + "_" + root.getVersion()).replace(".", "-");
+//	}
 
 	private String findSystem() {
 		MavenProject root = session.getTopLevelProject();

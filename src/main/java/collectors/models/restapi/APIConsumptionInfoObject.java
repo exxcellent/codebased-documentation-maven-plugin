@@ -9,22 +9,21 @@ import util.ConsumeDescription;
 
 public class APIConsumptionInfoObject extends InfoObject {
 	
-	private String microserviceName;
+	private String microserviceTag;
 	private List<ConsumeDescription> consumes;
 //	private Map<String, Map<String, Set<String>>> serviceToPathToMethod;
 	
 	public APIConsumptionInfoObject() {
 		this.consumes = new ArrayList<>();
 	}
-	
-	public String getMicroserviceName() {
-		return microserviceName;
-	}
-	
-	public void setMicroserviceName(String microserviceName) {
-		this.microserviceName = microserviceName;
+
+	public String getMicroserviceTag() {
+		return microserviceTag;
 	}
 
+	public void setMicroserviceTag(String microserviceTag) {
+		this.microserviceTag = microserviceTag;
+	}
 
 	public List<ConsumeDescription> getConsumes() {
 		return consumes;
