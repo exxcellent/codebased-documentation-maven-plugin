@@ -2,20 +2,32 @@ package reader.impl.apiconsumption;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+
+import org.apache.maven.plugin.logging.Log;
 
 import com.google.common.collect.Sets;
 import com.thoughtworks.qdox.JavaProjectBuilder;
 import com.thoughtworks.qdox.model.JavaAnnotation;
 import com.thoughtworks.qdox.model.JavaClass;
 import com.thoughtworks.qdox.model.JavaMethod;
+import com.thoughtworks.qdox.model.impl.DefaultJavaAnnotation;
 
 import annotation.ConsumesAPI;
+import annotation.ConsumesAPIs;
 import reader.interfaces.ConsumesAPIReader;
 import util.ConsumeDescription;
+import util.HttpMethods;
 
 public class AnnotationReader implements ConsumesAPIReader {
+
+	private Log log;
+
+	public AnnotationReader(Log log) {
+		this.log = log;
+	}
 
 	@Override
 	public List<ConsumeDescription> getAPIConsumption(File src) {
@@ -26,7 +38,7 @@ public class AnnotationReader implements ConsumesAPIReader {
 
 		for (JavaClass clazz : builder.getClasses()) {
 			if (clazz.getSource().getImports().contains(ConsumesAPI.class.getCanonicalName())) {
-				System.out.println("found class -> " + clazz.getCanonicalName());
+				log.info("Annotations in class: " + clazz.getCanonicalName());
 				searchForAPIInfo(clazz, returnList);
 			}
 
@@ -37,7 +49,8 @@ public class AnnotationReader implements ConsumesAPIReader {
 
 	/**
 	 * Iterates through the methods of the given class and their annotations. If the
-	 * ConsumesAPI annotation is found, read the info and add it to the returnList.
+	 * ConsumesAPI or ConsumesAPIs annotation are found, read the info and add it to
+	 * the returnList.
 	 * 
 	 * @param clazz      class to be evaluated.
 	 * @param returnList List containing the found api consumption info.
@@ -47,7 +60,35 @@ public class AnnotationReader implements ConsumesAPIReader {
 			for (JavaAnnotation annotation : method.getAnnotations()) {
 				if (annotation.getType().getCanonicalName().equals(ConsumesAPI.class.getCanonicalName())) {
 					addConsumesAPIInfo(clazz, annotation, returnList);
-					break;
+				}
+				if (annotation.getType().getCanonicalName().equals(ConsumesAPIs.class.getCanonicalName())) {
+					addAllConsumesAPIInfo(clazz, annotation, returnList);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Use this method to analyze ConsumesAPIs-Annotations. Splits this annotation
+	 * in the COnsumeAPI annotations within and calls addConsumesAPIInfo for each of
+	 * them.
+	 * 
+	 * @param clazz       JavaClass Object of the current class.
+	 * @param annotation  Annotation, should be of type ConsumesAPIs.
+	 * @param consumeList List containing all found consume info. Results are added
+	 *                    into it.
+	 */
+	private void addAllConsumesAPIInfo(JavaClass clazz, JavaAnnotation annotation,
+			List<ConsumeDescription> consumeList) {
+		Object val = annotation.getNamedParameter("value");
+
+		if (val instanceof LinkedList) {
+			LinkedList<Object> valList = (LinkedList<Object>) val;
+
+			for (Object obj : valList) {
+
+				if (obj instanceof DefaultJavaAnnotation) {
+					addConsumesAPIInfo(clazz, (DefaultJavaAnnotation) obj, consumeList);
 				}
 			}
 		}
@@ -58,30 +99,53 @@ public class AnnotationReader implements ConsumesAPIReader {
 	 * ConsumeDescriptionTriple object, which is added to the list, if there was not
 	 * already an object with the same path and service name.
 	 * 
-	 * @param annotation JavaAnnotation of type ConsumesAPI.class.
-	 * @param consumeList LIst to which the new info is to be added to.
+	 * @param clazz       JavaClass Object of the current class. Needed to find the
+	 *                    current package.
+	 * @param annotation  JavaAnnotation of type ConsumesAPI.class.
+	 * @param consumeList List to which the new info is to be added to.
 	 */
 	private void addConsumesAPIInfo(JavaClass clazz, JavaAnnotation annotation, List<ConsumeDescription> consumeList) {
 		String name = ConsumesAPI.DEFAULT_SERVICE;
+
 		if (annotation.getNamedParameter("service") != null) {
 			name = format(annotation.getNamedParameter("service").toString());
+			if (!couldBeValidService(name)) {
+				log.error(name + " is not a valid tag. Please follow the pattern of [groupId]:[artifactId].");
+				log.error("line: " + annotation.getLineNumber());
+				name = ConsumesAPI.DEFAULT_SERVICE;
+			}
 		}
 
 		String path = setTypeInPath(format(annotation.getNamedParameter("path").toString()));
 		String methodName = format(annotation.getNamedParameter("method").toString());
 		String packageName = clazz.getPackageName();
 
-		System.out.println(name + "  -  " + path + "  -  " + methodName);
-
-		if (!addToList(consumeList, name, packageName, path, methodName)) {
-			ConsumeDescription newTriple = new ConsumeDescription();
-			newTriple.setServiceName(name);
-			newTriple.setPackageName(packageName);
-			newTriple.addPathToMethod(path, Sets.newHashSet(methodName));
-			consumeList.add(newTriple);
+		try {
+			HttpMethods.valueOf(methodName.toUpperCase(Locale.ROOT));
+			log.info(name + "  -  " + path + "  -  " + methodName);
+			if (!addToList(consumeList, name, packageName, path, methodName)) {
+				ConsumeDescription newTriple = new ConsumeDescription();
+				newTriple.setServiceName(name);
+				newTriple.setPackageName(packageName);
+				newTriple.addPathToMethod(path, Sets.newHashSet(methodName));
+				consumeList.add(newTriple);
+			}
+		} catch (IllegalArgumentException e) {
+			log.error("Error at line: " + annotation.getLineNumber());
+			log.error(methodName + " is not a valid HttpMethod");
 		}
 	}
 
+	private boolean couldBeValidService(String serviceName) {
+		return serviceName.matches("([a-zA-Z\\.\\-\\_\\d]++\\:){1,2}([a-zA-Z\\.\\-\\_\\d]++)");
+	}
+
+	/**
+	 * trims given String and removes all quotation marks.
+	 * 
+	 * @param toFormat String to be formatted. won't be changed.
+	 * @return formatted String
+	 */
 	private String format(String toFormat) {
 		return toFormat.trim().trim().replaceAll("\"", "");
 	}
@@ -122,7 +186,8 @@ public class AnnotationReader implements ConsumesAPIReader {
 			String method) {
 
 		for (ConsumeDescription currentTriple : consume) {
-			if (currentTriple.getServiceName().equals(serviceName) && currentTriple.getPackageName().equals(packageName)) {
+			if (currentTriple.getServiceName().equals(serviceName)
+					&& currentTriple.getPackageName().equals(packageName)) {
 				currentTriple.addPathToMethod(path, Sets.newHashSet(method));
 				return true;
 			}

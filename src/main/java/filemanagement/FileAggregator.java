@@ -69,12 +69,6 @@ public class FileAggregator {
 		log.info("    - MODULE FILES - ");
 		List<File> moduleInfoFiles = findFiles(ModuleInfoCollector.FOLDER_NAME, ModuleInfoCollector.FILE_NAME);
 		List<ModuleInfoObject> mavenJsonObjects = createJSONObjects(moduleInfoFiles, ModuleInfoObject.class);
-		// TODO process InfoObjects
-
-		Map<String, List<String>> moduleDependencies = new HashMap<>();
-		for (ModuleInfoObject currentObject : mavenJsonObjects) {
-			moduleDependencies.put(currentObject.getTag(), currentObject.getDependsOn());
-		}
 
 		log.info("    - COMPONENT FILES - ");
 		List<File> componentInfoFiles = findFiles(ComponentInfoCollector.FOLDER_NAME, ComponentInfoCollector.FILE_NAME);
@@ -85,7 +79,6 @@ public class FileAggregator {
 		CollectedMavenInfoObject mavenCollection = new CollectedMavenInfoObject(projectName, findProjectTag(),
 				findSystem(), findSubsystem());
 		mavenCollection.setModules(mavenJsonObjects);
-		mavenCollection.setModuleDependencies(moduleDependencies);
 		mavenCollection.setComponents(packageJsonObjects);
 		log.info("    - WRITE - ");
 		FileWriter.writeInfoToJSONFile(folderPath.getAbsolutePath(),
@@ -109,11 +102,11 @@ public class FileAggregator {
 		
 		log.info("    - REST CONSUME FILE - ");
 		/* get APIConsumptionInfoObjects */
-		log.info("    - AGGREGATE - ");
 		List<File> consumeInfoFiles = findFiles(APIInfoCollector.FOLDER_NAME, APIInfoCollector.FILE_NAME_CONSUME);
 		List<APIConsumptionInfoObject> apiConsumeInfoObjects = createJSONObjects(consumeInfoFiles,
 				APIConsumptionInfoObject.class);
 
+		log.info("    - AGGREGATE - ");
 		CollectedAPIInfoObject collectedInfo = new CollectedAPIInfoObject(apiInfoObject.getMicroserviceName());
 		collectedInfo.setServiceTag(apiInfoObject.getMicroserviceTag());
 		collectedInfo.setProvide(apiInfoObject);

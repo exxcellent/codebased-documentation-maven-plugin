@@ -15,13 +15,10 @@ import reader.impl.api.JAXRSReader;
 import reader.impl.api.SPRINGReader;
 import reader.impl.api.SwaggerReader;
 import reader.impl.apiconsumption.AnnotationReader;
-import reader.impl.apiconsumption.ApacheCommonsClientReader;
 import reader.interfaces.APIReader;
 import reader.interfaces.ConsumesAPIReader;
 import util.ConsumeDescription;
-import util.HttpMethods;
 import util.OfferDescription;
-import util.Pair;
 
 public class APIInfoCollector implements InformationCollector {
 
@@ -92,30 +89,9 @@ public class APIInfoCollector implements InformationCollector {
 	private APIConsumptionInfoObject generateAPIConsumptionInfo() {
 		APIConsumptionInfoObject infoObject = new APIConsumptionInfoObject();
 		infoObject.setMicroserviceTag(getServiceTag());
-
-		ConsumptionInfo location = getInfoLocation();
-
-		ConsumesAPIReader reader = null;
-		switch (location) {
-		case apache:
-			log.info("Clients: Apache Commons Client.");
-			reader = new ApacheCommonsClientReader();
-			break;
-		case annotation:
-			log.info("Clients: none -> annotations");
-			reader = new AnnotationReader();
-			break;
-		case restTemplate:
-			log.info("Clients: Spring Boot Rest Template.");
-			reader = null;
-			break;
-		default:
-			log.error("Could not determine Http client type -> Using annotations.");
-			reader = new AnnotationReader();
-		}
+		ConsumesAPIReader reader = new AnnotationReader(log);
 		List<ConsumeDescription> triples = reader.getAPIConsumption(project.getBasedir());
 		for (ConsumeDescription triple : triples) {
-//			infoObject.addServiceToPathToMethod(triple);
 			infoObject.addConsumeDescriptionTriple(triple);
 		}
 		return infoObject;
@@ -145,14 +121,5 @@ public class APIInfoCollector implements InformationCollector {
 
 		return tag;
 	}
-
-	private ConsumptionInfo getInfoLocation() {
-		//TODO: check POM whether there are dependencies to the clients.
-		return ConsumptionInfo.annotation;
-	}
-
-	private enum ConsumptionInfo {
-		annotation, apache, restTemplate
-	};
 
 }

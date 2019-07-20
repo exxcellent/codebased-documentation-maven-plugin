@@ -248,7 +248,6 @@ public class JAXRSReader implements APIReader {
 		if (apiConfigFile != null) {
 			configFile = apiConfigFile;
 		} else {
-			;
 			try (Stream<java.nio.file.Path> fileStream = Files.find(Paths.get(project.getBasedir().getAbsolutePath()),
 					6, (p, a) -> p.endsWith("web.xml") && a.isRegularFile())) {
 				Optional<java.nio.file.Path> path = fileStream.findFirst();

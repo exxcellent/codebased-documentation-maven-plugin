@@ -97,7 +97,8 @@ public class DocumentationMojo extends AbstractMojo {
 			setDocumentLocation();
 			FileAggregator aggregator = new FileAggregator(session, getLog());
 			aggregator.aggregateMavenFilesTo(documentLocation, SUFFIX);
-			aggregator.aggregateAPIFilesTo(documentLocation, SUFFIX);			
+			aggregator.aggregateAPIFilesTo(documentLocation, SUFFIX);	
+			getLog().info("  -- FINISHED --");
 		}
 
 	}

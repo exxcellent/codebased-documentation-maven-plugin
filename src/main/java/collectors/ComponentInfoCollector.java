@@ -149,7 +149,7 @@ public class ComponentInfoCollector implements InformationCollector {
 				}
 			}
 			currentDepth = 0;
-		} else {
+		} else if (currentFile.exists()){
 			try {
 				JavaSource src = builder.addSource(currentFile);
 				if (!isInBlackList(packageName)) {
@@ -182,7 +182,7 @@ public class ComponentInfoCollector implements InformationCollector {
 				if (currentImportSplit.length > maxBaseLength && maxBaseLength != -1) {
 					currentImportSplit = (String[]) Arrays.copyOf(currentImportSplit, maxBaseLength);
 				}
-				if (!String.join(".", currentImportSplit).equals(currentPackage)) {
+				if (!String.join(".", currentImportSplit).equals(currentPackage) && maxBaseLength != -1) {
 					relevantImportPackages.add(String.join(".", currentImportSplit));
 				}
 			}
