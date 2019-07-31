@@ -1,7 +1,6 @@
 package collectors.models.restapi;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -9,12 +8,18 @@ import java.util.Map;
 import java.util.Set;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
 
 import collectors.models.InfoObject;
 import util.HttpMethods;
 import util.OfferDescription;
 
+/**
+ * Class containing data about offered REST API: name and tag of the current
+ * service, descriptions of paths and their offered methods.
+ * 
+ * @author gmittmann
+ *
+ */
 public class APIInfoObject extends InfoObject {
 
 	private String microserviceTag;

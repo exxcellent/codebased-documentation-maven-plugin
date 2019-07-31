@@ -5,12 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.maven.execution.MavenSession;
-import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
 
 import collectors.models.maven.ModuleInfoObject;
-import collectors.models.maven.ProjectInfoObject;
 import filemanagement.FileWriter;
 
 /**

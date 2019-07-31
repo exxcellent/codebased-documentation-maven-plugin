@@ -2,7 +2,6 @@ package reader.impl.api;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -30,7 +29,6 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.project.MavenProject;
 import org.w3c.dom.Document;
-import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
@@ -50,6 +48,12 @@ import util.HttpMethods;
 import util.OfferDescription;
 import util.Pair;
 
+/**
+ * Class for reading JAX-RS style annotations.
+ * 
+ * @author gmittmann
+ *
+ */
 public class JAXRSReader implements APIReader {
 
 	private static final List<String> HTTP_METHODS = Arrays.asList(GET.class.getCanonicalName(),
@@ -128,8 +132,10 @@ public class JAXRSReader implements APIReader {
 	 * (from the path annotation on class level). Currently methods with only path
 	 * annotations are not supported and return null.
 	 * 
-	 * @param method    JavaMethod to be analyzed.
-	 * @param classPath path annotated on class level.
+	 * @param method
+	 *            JavaMethod to be analyzed.
+	 * @param classPath
+	 *            path annotated on class level.
 	 * @return Pair containing path and method. Null, if there is no path/method.
 	 */
 	private Pair<String, HttpMethods> getMethodAnnotations(JavaMethod method, String classPath) {
@@ -160,6 +166,16 @@ public class JAXRSReader implements APIReader {
 
 	}
 
+	/**
+	 * Searches for path parameters in the method and sets their class into the path
+	 * instead of the name of the parameter
+	 * 
+	 * @param method
+	 *            JavaMethod to be analyzed
+	 * @param path
+	 *            path in which the found parameter is to be set
+	 * @return new path with replaced parameters
+	 */
 	private String setTypeInPath(JavaMethod method, String path) {
 		String newPath = removeRegularExpressionsFromPath(path);
 		for (JavaParameter param : method.getParameters()) {
@@ -178,6 +194,13 @@ public class JAXRSReader implements APIReader {
 		return newPath;
 	}
 
+	/**
+	 * Removes any regular expressions given in a paths parameters.
+	 * 
+	 * @param path
+	 *            path to be cleaned from regular expressions.
+	 * @return path without regular expressions
+	 */
 	private String removeRegularExpressionsFromPath(String path) {
 		return path.replaceAll(":[^}]*}", "}");
 	}
@@ -192,10 +215,12 @@ public class JAXRSReader implements APIReader {
 	 * the application path is null, the given path of the pair is formatted as base
 	 * path.
 	 * 
-	 * @param paths           List of pairs. The applicationPath is to be added to
-	 *                        the left side of the pair.
-	 * @param applicationPath String containing the path given as path of the
-	 *                        application. Can be null.
+	 * @param paths
+	 *            List of pairs. The applicationPath is to be added to the left side
+	 *            of the pair.
+	 * @param applicationPath
+	 *            String containing the path given as path of the application. Can
+	 *            be null.
 	 * @return List of pairs onto which the application path was concatenated.
 	 */
 	private List<OfferDescription> concatApplicationPathTo(Collection<OfferDescription> offerDescriptions,
@@ -224,8 +249,7 @@ public class JAXRSReader implements APIReader {
 				newOffer.setPackageName(offer.getPackageName());
 				for (Entry<String, Set<HttpMethods>> entry : offer.getPathToMethodMappings().entrySet()) {
 					for (HttpMethods meth : entry.getValue()) {
-						Pair<String, HttpMethods> longPathPair = new Pair<>(
-								formatBasePath(entry.getKey()), meth);
+						Pair<String, HttpMethods> longPathPair = new Pair<>(formatBasePath(entry.getKey()), meth);
 						newOffer.addPathToMethod(longPathPair);
 					}
 				}
@@ -300,7 +324,8 @@ public class JAXRSReader implements APIReader {
 	/**
 	 * Searches for the url-pattern element in the given file. File should be xml.
 	 * 
-	 * @param xmlFile file being parsed.
+	 * @param xmlFile
+	 *            file being parsed.
 	 * @return the value found or null.
 	 */
 	private String readUrlPattern(File xmlFile, String tagName, String parentName) {
@@ -343,7 +368,8 @@ public class JAXRSReader implements APIReader {
 	 * Formats the given String to /path by trimming, removing " and making sure,
 	 * that it starts with a slash and ends without a slash or star.
 	 * 
-	 * @param basePath path to be transformed.
+	 * @param basePath
+	 *            path to be transformed.
 	 * @return transformed String
 	 */
 	private String formatBasePath(String basePath) {
@@ -365,7 +391,8 @@ public class JAXRSReader implements APIReader {
 	 * Formats the given String to /path by trimming, removing " and making sure,
 	 * that it starts with a slash and ends without a slash.
 	 * 
-	 * @param concatPathpath to be transformed.
+	 * @param concatPathpath
+	 *            to be transformed.
 	 * @return transformed String
 	 */
 	private String formatConcatPath(String concatPath) {

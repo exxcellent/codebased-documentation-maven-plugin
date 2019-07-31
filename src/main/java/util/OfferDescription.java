@@ -7,6 +7,11 @@ import java.util.Set;
 
 import com.google.common.collect.Sets;
 
+/**
+ * Class containing all info needed to describe REST API
+ * @author gesam
+ *
+ */
 public class OfferDescription {
 	
 	private String packageName;

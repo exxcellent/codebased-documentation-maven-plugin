@@ -4,8 +4,15 @@ import java.util.Set;
 
 import collectors.models.InfoObject;
 
+/**
+ * Class containing data about a component: it's name and on which component it
+ * depeds on.
+ * 
+ * @author gmittmann
+ *
+ */
 public class ComponentInfoObject extends InfoObject {
-	
+
 	private String packageName;
 	private Set<String> dependsOn;
 

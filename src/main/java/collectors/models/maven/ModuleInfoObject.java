@@ -7,17 +7,25 @@ import org.apache.maven.project.MavenProject;
 
 import collectors.models.InfoObject;
 
-public class ModuleInfoObject extends InfoObject{
-	
+/**
+ * Class containing data about a module: Its name, its tag, gourpId, artifactId,
+ * version and on which module it depends.
+ * 
+ * @author gmittmann
+ *
+ */
+public class ModuleInfoObject extends InfoObject {
+
 	private String moduleName;
 	private String artifactID;
 	private String groupID;
 	private String version;
 	private String tag;
-	
+
 	private List<String> dependsOn;
-	
-	public ModuleInfoObject(String name, String artifactID, String groupId, String version, String tag, List<String> dependsOn) {
+
+	public ModuleInfoObject(String name, String artifactID, String groupId, String version, String tag,
+			List<String> dependsOn) {
 		this.setModuleName(name);
 		this.artifactID = artifactID;
 		this.groupID = groupId;
@@ -34,49 +42,49 @@ public class ModuleInfoObject extends InfoObject{
 		this.tag = this.groupID + ":" + this.artifactID + ":" + this.version;
 		this.dependsOn = dependsOn;
 	}
-	
+
 	public String getArtifactID() {
 		return artifactID;
 	}
-	
+
 	public void setArtifactID(String artifactID) {
 		this.artifactID = artifactID;
 	}
-	
+
 	public String getGroupID() {
 		return groupID;
 	}
-	
+
 	public void setGroupID(String groupID) {
 		this.groupID = groupID;
 	}
-	
+
 	public String getVersion() {
 		return version;
 	}
-	
+
 	public void setVersion(String version) {
 		this.version = version;
 	}
-	
+
 	public String getTag() {
 		return tag;
 	}
-	
+
 	public void setTag(String tag) {
 		this.tag = tag;
 	}
-		
+
 	public List<String> getDependsOn() {
 		return dependsOn;
 	}
-	
+
 	public void setDependsOn(List<String> dependsOn) {
 		this.dependsOn = dependsOn;
 	}
-	
+
 	public void addDependsOn(String dependsOn) {
-		if(dependsOn == null) {
+		if (dependsOn == null) {
 			this.dependsOn = new ArrayList<String>();
 		}
 		this.dependsOn.add(dependsOn);

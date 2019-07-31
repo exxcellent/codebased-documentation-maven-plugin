@@ -7,8 +7,14 @@ import java.util.List;
 import annotation.ConsumesAPI;
 import collectors.models.InfoObject;
 import util.ConsumeDescription;
-import util.OfferDescription;
 
+/**
+ * Class containing offered and consumed REST-API alongside the name and teh tag
+ * of the current service.
+ * 
+ * @author gmittmann
+ *
+ */
 public class CollectedAPIInfoObject extends InfoObject {
 
 	private String serviceName;
@@ -69,27 +75,5 @@ public class CollectedAPIInfoObject extends InfoObject {
 		}
 		this.consume.addAll(triples);
 	}
-	
-//	public List<OfferDescription> getProvide() {
-//		return provide;
-//	}
-//
-//	public void setProvide(List<OfferDescription> offer) {
-//		this.provide = offer;
-//	}
-//
-//	public void addOfferDescriptionTriple(OfferDescription offer) {
-//		if (this.provide == null) {
-//			this.provide = new ArrayList<>();
-//		}
-//		this.provide.add(offer);
-//	}
-//
-//	public void addOfferDescriptionTriples(Collection<OfferDescription> offers) {
-//		if (this.provide == null) {
-//			this.provide = new ArrayList<>();
-//		}
-//		this.provide.addAll(offers);
-//	}
 
 }

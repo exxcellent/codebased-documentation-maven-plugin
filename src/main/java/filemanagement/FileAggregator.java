@@ -6,12 +6,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
 
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.logging.Log;
@@ -34,9 +29,6 @@ import collectors.models.restapi.APIConsumptionInfoObject;
 import collectors.models.restapi.APIInfoObject;
 import collectors.models.restapi.CollectedAPIInfoObject;
 import mojos.DocumentationMojo;
-import util.ConsumeDescription;
-import util.HttpMethods;
-import util.OfferDescription;
 
 /**
  * Class for gathering and combining information files.
@@ -55,12 +47,13 @@ public class FileAggregator {
 	}
 
 	/**
-	 * Collects all information files of the projects and combines them to topic
-	 * related files and one joined file with all information.
+	 * Collects all component and module information files of the projects and
+	 * combines them to one joined file with all information.
 	 * 
-	 * @param folderPath     path to the folder, into which the new files shall be
-	 *                       saved
-	 * @param fileNameSuffix suffix to be appended to the file name of the topics
+	 * @param folderPath
+	 *            path to the folder, into which the new files is to be saved
+	 * @param fileNameSuffix
+	 *            suffix to be appended to the file name
 	 */
 	public void aggregateMavenFilesTo(File folderPath, String fileNameSuffix) {
 
@@ -72,7 +65,8 @@ public class FileAggregator {
 
 		log.info("    - COMPONENT FILES - ");
 		List<File> componentInfoFiles = findFiles(ComponentInfoCollector.FOLDER_NAME, ComponentInfoCollector.FILE_NAME);
-		List<ModuleToComponentInfoObject> packageJsonObjects = createJSONObjects(componentInfoFiles, ModuleToComponentInfoObject.class);
+		List<ModuleToComponentInfoObject> packageJsonObjects = createJSONObjects(componentInfoFiles,
+				ModuleToComponentInfoObject.class);
 
 		log.info("    - AGGREGATE - ");
 		/* join information in one file */
@@ -87,19 +81,28 @@ public class FileAggregator {
 
 	}
 
+	/**
+	 * Collects all information about API of the projects into one joined file at
+	 * the given path.
+	 * 
+	 * @param folderPath
+	 *            path to the folder, into which the new files is to be saved
+	 * @param fileNameSuffix
+	 *            suffix to be appended to the file name of the topics
+	 */
 	public void aggregateAPIFilesTo(File folderPath, String fileNameSuffix) {
 		log.info("    - REST OFFER FILE - ");
 		List<File> interfaceInfoFiles = findFiles(APIInfoCollector.FOLDER_NAME, APIInfoCollector.FILE_NAME);
 		List<APIInfoObject> apiInfoObjects = createJSONObjects(interfaceInfoFiles, APIInfoObject.class);
-		
+
 		/* merge APIINfoObjects */
 		APIInfoObject apiInfoObject = new APIInfoObject(findProjectTag(), findProjectName());
 		for (APIInfoObject info : apiInfoObjects) {
 			apiInfoObject.addOffers(info.getApi());
-		}		
-		
+		}
+
 		System.out.println("---");
-		
+
 		log.info("    - REST CONSUME FILE - ");
 		/* get APIConsumptionInfoObjects */
 		List<File> consumeInfoFiles = findFiles(APIInfoCollector.FOLDER_NAME, APIInfoCollector.FILE_NAME_CONSUME);
@@ -132,16 +135,22 @@ public class FileAggregator {
 		return root.getName().isEmpty() ? (root.getGroupId() + ":" + root.getArtifactId()) : root.getName();
 	}
 
+	/**
+	 * Searches for groupId, artifactId and Version of the root project and
+	 * concatenates the found values.
+	 * 
+	 * @return concatenation of groupId, artifactId and version of root project
+	 */
 	private String findProjectTag() {
 		MavenProject root = session.getTopLevelProject();
 		return (root.getGroupId() + ":" + root.getArtifactId() + ":" + root.getVersion());
 	}
-	
-//	private String findProjectTagForFile() {
-//		MavenProject root = session.getTopLevelProject();
-//		return (root.getGroupId() + "_" + root.getArtifactId() + "_" + root.getVersion()).replace(".", "-");
-//	}
 
+	/**
+	 * Reads system configuration from the root project.
+	 * 
+	 * @return the found system name
+	 */
 	private String findSystem() {
 		MavenProject root = session.getTopLevelProject();
 		for (MavenProject prj : session.getAllProjects()) {
@@ -159,6 +168,11 @@ public class FileAggregator {
 		return system;
 	}
 
+	/**
+	 * Read subsystem configuration of the root project.
+	 * 
+	 * @return found subsystem name
+	 */
 	private String findSubsystem() {
 		MavenProject root = session.getTopLevelProject();
 		for (MavenProject prj : session.getAllProjects()) {
@@ -181,9 +195,11 @@ public class FileAggregator {
 	 * session and puts them in a list. If the file is in the target folder itself,
 	 * set folderName to a dot [.].
 	 * 
-	 * @param folderName name of the folder, in which the file is located. Path
-	 *                   relative to the target folder of the projects.
-	 * @param fileName   name of the file (without document type).
+	 * @param folderName
+	 *            name of the folder, in which the file is located. Path relative to
+	 *            the target folder of the projects.
+	 * @param fileName
+	 *            name of the file (without document type).
 	 * @return List of all files with the given name and folder location.
 	 */
 	private List<File> findFiles(String folderName, String fileName) {
@@ -212,7 +228,8 @@ public class FileAggregator {
 	/**
 	 * Creates InfoObjects (if possible) based on the files in the given list.
 	 * 
-	 * @param files list of files, that are to be turned into InfoObjects.
+	 * @param files
+	 *            list of files, that are to be turned into InfoObjects.
 	 * @return list with the created InfoObjects.
 	 */
 	private <T extends InfoObject> List<T> createJSONObjects(List<File> files, Class<T> clazz) {
@@ -239,8 +256,10 @@ public class FileAggregator {
 	 * Tries to read the given parameter in the given object. If the object is not a
 	 * Xpp3Dom object or the parameter doesn't exist, returns null.
 	 * 
-	 * @param domObject     object in which the parameter is searched for.
-	 * @param parameterName name of the parameter
+	 * @param domObject
+	 *            object in which the parameter is searched for.
+	 * @param parameterName
+	 *            name of the parameter
 	 * @return value of the parameter or null, if object doesn't exist.
 	 */
 	private String extractFromConfigurationDOM(Object domObject, String parameterName) {

@@ -4,47 +4,25 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
-import com.google.common.collect.Lists;
-import com.google.common.collect.Sets;
-
+/**
+ * Class containing info needed for describing a consumption of a REST-API.
+ * 
+ * @author gmittmann
+ *
+ */
 public class ConsumeDescription {
-	
+
 	private String serviceName;
 	private String packageName;
 	private Map<String, Set<String>> pathToMethods;
-	
+
 	public String getServiceName() {
 		return serviceName;
 	}
-	
+
 	public void setServiceName(String serviceName) {
 		this.serviceName = serviceName;
 	}
-	
-//	public String getPath() {
-//		return path;
-//	}
-//	
-//	public void setPath(String path) {
-//		this.path = path;
-//	}
-//	
-//	public Set<String> getMethods() {
-//		return methods;
-//	}
-//	
-//	public void setMethods(Set<String> methods) {
-//		this.methods = methods;
-//	}
-//	
-//	public void addMethod(String method) {
-//		if (this.methods == null) {
-//			methods = Sets.newHashSet(method);
-//		} else {
-//			methods.add(method);
-//		}
-//		
-//	}
 
 	public String getPackageName() {
 		return packageName;

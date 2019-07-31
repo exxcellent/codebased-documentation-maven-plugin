@@ -58,9 +58,6 @@ public class DocumentationMojo extends AbstractMojo {
 	@Parameter(property = "annotation", defaultValue = "SPRING")
 	private AnnotationType annotationType;
 	
-	@Parameter(property = "swaggerFilePaths")
-	private List<String> swaggerFilePaths;
-
 	@Parameter(property = "apiConfigFilePath")
 	private File apiConfigFilePath;
 	
@@ -82,7 +79,7 @@ public class DocumentationMojo extends AbstractMojo {
 					project, getLog());
 			packageInfoCollector.collectInfo();
 			
-			APIInfoCollector apiInfoCollector = new APIInfoCollector(project, getLog(), annotationType, swaggerFilePaths, apiConfigFilePath, contextPath);
+			APIInfoCollector apiInfoCollector = new APIInfoCollector(project, getLog(), annotationType, apiConfigFilePath, contextPath);
 			apiInfoCollector.collectInfo();
 		} else {
 			getLog().info("Skipping data collection: pom");

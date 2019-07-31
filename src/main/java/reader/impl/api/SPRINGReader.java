@@ -11,8 +11,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 
-import javax.ws.rs.PathParam;
-
 import org.apache.maven.plugin.logging.Log;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Controller;
@@ -40,10 +38,7 @@ import util.OfferDescription;
 import util.Pair;
 
 /**
- * REST Api reader for Spring Boot. Currently externalized configuration is
- * ignored. e.g. @Value annotations can't be resolved. TODO: read
- * application.properties or application.yml from src/main/resources TODO:
- * REFACTOR THIS....
+ * Class for reading Spring Boot style REST annotations.
  * 
  * @author gmittmann
  *
@@ -153,6 +148,15 @@ public class SPRINGReader implements APIReader {
 		return new Pair<List<Pair<String, HttpMethods>>, Boolean>(baseMapping, controller);
 	}
 
+	/**
+	 * Adds the given context path as Prefix to the baseMappings' paths.
+	 * @param contextPath 
+	 * 				path to be used as prefix
+	 * @param baseMappings
+	 * 				base mappings for the class
+	 * 
+	 * @return baseMappings with changed paths.
+	 */
 	private List<Pair<String, HttpMethods>> addContextPathToBaseMapping(String contextPath,
 			List<Pair<String, HttpMethods>> baseMappings) {
 		if (contextPath == null || contextPath.isEmpty()) {
@@ -236,6 +240,16 @@ public class SPRINGReader implements APIReader {
 		return pairList;
 	}
 
+	/**
+	 * Searches for path parameters in the method and sets their class into the path
+	 * instead of the name of the parameter
+	 * 
+	 * @param method
+	 *            JavaMethod to be analyzed
+	 * @param path
+	 *            path in which the found parameter is to be set
+	 * @return new path with replaced parameters
+	 */
 	private String setTypeInPath(JavaMethod method, String path) {
 		String newPath = removeRegularExpressionsFromPath(path);
 		for (JavaParameter param : method.getParameters()) {
@@ -257,6 +271,13 @@ public class SPRINGReader implements APIReader {
 		return newPath;
 	}
 	
+	/**
+	 * Removes any regular expressions given in a paths parameters.
+	 * 
+	 * @param path
+	 *            path to be cleaned from regular expressions.
+	 * @return path without regular expressions
+	 */
 	private String removeRegularExpressionsFromPath(String path) {
 		return path.replaceAll(":[^}]*}", "}");
 	}
@@ -363,6 +384,12 @@ public class SPRINGReader implements APIReader {
 
 	}
 
+	/**
+	 * Searches for a context path in the apiConfigFile. Can execute 
+	 * on .properties and yaml files.
+	 * 
+	 * @return context path, if found, else an empty String
+	 */
 	private String getApplicationPath() {
 		if (apiConfigFile == null || !apiConfigFile.exists()) {
 			return "";

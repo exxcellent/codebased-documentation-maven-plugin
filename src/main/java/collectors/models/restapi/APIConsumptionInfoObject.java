@@ -3,16 +3,21 @@ package collectors.models.restapi;
 import java.util.ArrayList;
 import java.util.List;
 
-
 import collectors.models.InfoObject;
 import util.ConsumeDescription;
 
+/**
+ * Class containing data about API consumption: Tag of the current service and
+ * descriptions of which service to call with what path and method.
+ * 
+ * @author gmittmann
+ *
+ */
 public class APIConsumptionInfoObject extends InfoObject {
-	
+
 	private String microserviceTag;
 	private List<ConsumeDescription> consumes;
-//	private Map<String, Map<String, Set<String>>> serviceToPathToMethod;
-	
+
 	public APIConsumptionInfoObject() {
 		this.consumes = new ArrayList<>();
 	}
@@ -32,10 +37,9 @@ public class APIConsumptionInfoObject extends InfoObject {
 	public void setConsumes(List<ConsumeDescription> consumes) {
 		this.consumes = consumes;
 	}
-	
+
 	public void addConsumeDescriptionTriple(ConsumeDescription triple) {
 		this.consumes.add(triple);
 	}
-	
 
 }

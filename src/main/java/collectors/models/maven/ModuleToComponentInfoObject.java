@@ -5,6 +5,11 @@ import java.util.List;
 
 import collectors.models.InfoObject;
 
+/**
+ * Class containing info about which module contains which components.
+ * @author gmittmann
+ *
+ */
 public class ModuleToComponentInfoObject extends InfoObject {
 	
 	private String moduleTag;

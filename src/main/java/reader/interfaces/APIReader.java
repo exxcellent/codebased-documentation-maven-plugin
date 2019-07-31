@@ -1,17 +1,19 @@
 package reader.interfaces;
 
 import java.io.File;
-import java.util.Arrays;
 import java.util.List;
 
-import util.HttpMethods;
 import util.OfferDescription;
-import util.Pair;
 
 public interface APIReader {
-	
-//	public static final List<String> HTTP_METHOD_TYPE = Arrays.asList("GET", "PUT", "POST", "DELETE", "HEAD", "OPTIONS", "PATCH");
-	
+
+	/**
+	 * Form all REST-API annotation found in the given file into OfferDescriptions.
+	 * 
+	 * @param src
+	 *            directory or file in which the annotations are searched for
+	 * @return List of OfferDescriptions of the found annotations
+	 */
 	public List<OfferDescription> getPathsAndMethods(File src);
 
 }

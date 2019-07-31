@@ -4,6 +4,12 @@ import java.util.List;
 
 import collectors.models.InfoObject;
 
+/**
+ * Class containing all collected data concerning internal structure of the projects.
+ * 
+ * @author gmittmann
+ *
+ */
 public class CollectedMavenInfoObject extends InfoObject{
 	
 	private String projectName;

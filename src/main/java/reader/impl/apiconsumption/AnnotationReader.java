@@ -21,6 +21,12 @@ import reader.interfaces.ConsumesAPIReader;
 import util.ConsumeDescription;
 import util.HttpMethods;
 
+/**
+ * Class for reading ConsumesAPI and ConsumesAPIs annotations.
+ * 
+ * @author gmittmann
+ *
+ */
 public class AnnotationReader implements ConsumesAPIReader {
 
 	private Log log;
@@ -52,8 +58,10 @@ public class AnnotationReader implements ConsumesAPIReader {
 	 * ConsumesAPI or ConsumesAPIs annotation are found, read the info and add it to
 	 * the returnList.
 	 * 
-	 * @param clazz      class to be evaluated.
-	 * @param returnList List containing the found api consumption info.
+	 * @param clazz
+	 *            class to be evaluated.
+	 * @param returnList
+	 *            List containing the found api consumption info.
 	 */
 	private void searchForAPIInfo(JavaClass clazz, List<ConsumeDescription> returnList) {
 		for (JavaMethod method : clazz.getMethods()) {
@@ -70,13 +78,15 @@ public class AnnotationReader implements ConsumesAPIReader {
 
 	/**
 	 * Use this method to analyze ConsumesAPIs-Annotations. Splits this annotation
-	 * in the COnsumeAPI annotations within and calls addConsumesAPIInfo for each of
+	 * in the ConsumeAPI annotations within and calls addConsumesAPIInfo for each of
 	 * them.
 	 * 
-	 * @param clazz       JavaClass Object of the current class.
-	 * @param annotation  Annotation, should be of type ConsumesAPIs.
-	 * @param consumeList List containing all found consume info. Results are added
-	 *                    into it.
+	 * @param clazz
+	 *            JavaClass Object of the current class.
+	 * @param annotation
+	 *            Annotation, should be of type ConsumesAPIs.
+	 * @param consumeList
+	 *            List containing all found consume info. Results are added into it.
 	 */
 	private void addAllConsumesAPIInfo(JavaClass clazz, JavaAnnotation annotation,
 			List<ConsumeDescription> consumeList) {
@@ -99,10 +109,13 @@ public class AnnotationReader implements ConsumesAPIReader {
 	 * ConsumeDescriptionTriple object, which is added to the list, if there was not
 	 * already an object with the same path and service name.
 	 * 
-	 * @param clazz       JavaClass Object of the current class. Needed to find the
-	 *                    current package.
-	 * @param annotation  JavaAnnotation of type ConsumesAPI.class.
-	 * @param consumeList List to which the new info is to be added to.
+	 * @param clazz
+	 *            JavaClass Object of the current class. Needed to find the current
+	 *            package.
+	 * @param annotation
+	 *            JavaAnnotation of type ConsumesAPI.class.
+	 * @param consumeList
+	 *            List to which the new info is to be added to.
 	 */
 	private void addConsumesAPIInfo(JavaClass clazz, JavaAnnotation annotation, List<ConsumeDescription> consumeList) {
 		String name = ConsumesAPI.DEFAULT_SERVICE;
@@ -136,6 +149,14 @@ public class AnnotationReader implements ConsumesAPIReader {
 		}
 	}
 
+	/**
+	 * Checks if service name conforms to either [groupId]:[artifactId] or
+	 * [groupId]:[artifactId]:[version]
+	 * 
+	 * @param serviceName
+	 *            name to check
+	 * @return true, if name is a valid service tag
+	 */
 	private boolean couldBeValidService(String serviceName) {
 		return serviceName.matches("([a-zA-Z\\.\\-\\_\\d]++\\:){1,2}([a-zA-Z\\.\\-\\_\\d]++)");
 	}
@@ -143,7 +164,8 @@ public class AnnotationReader implements ConsumesAPIReader {
 	/**
 	 * trims given String and removes all quotation marks.
 	 * 
-	 * @param toFormat String to be formatted. won't be changed.
+	 * @param toFormat
+	 *            String to be formatted. won't be changed.
 	 * @return formatted String
 	 */
 	private String format(String toFormat) {
